@@ -9,7 +9,9 @@ use crate::moderation::embeds::{
     guild_only_message, moderation_action_embed, moderation_permission_combo_denied_message,
     moderation_self_action_message, target_profile_from_user, usage_message,
 };
+use crate::moderation::logging::create_case_and_publish;
 use autumn_core::{Context, Error};
+use autumn_database::impls::cases::NewCase;
 use autumn_utils::cleanup::purge_user_globally;
 use autumn_utils::confirmation::{ConfirmationResult, prompt_confirm_decline};
 use autumn_utils::parse::parse_duration_seconds;
@@ -59,19 +61,16 @@ pub async fn terminate(
     let default_duration_secs = u64::from(MAX_NATIVE_BAN_DELETE_DAYS) * SECONDS_PER_DAY;
     let (purge_duration_secs, cutoff_display, reason) = match period_or_reason.as_deref() {
         Some(first) => {
-            if let Some(duration_secs) = parse_duration_seconds(first) {
-                (duration_secs, first.to_owned(), reason_rest)
-            } else {
-                let combined_reason = match reason_rest {
-                    Some(rest) => Some(format!("{first} {rest}")),
-                    None => Some(first.to_owned()),
-                };
-                (
-                    default_duration_secs,
-                    format!("{}d (default)", MAX_NATIVE_BAN_DELETE_DAYS),
-                    combined_reason,
-                )
-            }
+            let Some(duration_secs) = parse_duration_seconds(first) else {
+                ctx.say(format!(
+                    "Invalid purge period. Usage: `{}` (examples: 30s, 10m, 2h, 7d)",
+                    META.usage
+                ))
+                .await?;
+                return Ok(());
+            };
+
+            (duration_secs, first.to_owned(), reason_rest)
         }
         None => (
             default_duration_secs,
@@ -242,18 +241,43 @@ pub async fn terminate(
         )
     };
 
+    let case_reason = reason
+        .as_deref()
+        .unwrap_or("No reason provided")
+        .to_owned();
+    let case_label = create_case_and_publish(
+        &ctx,
+        guild_id,
+        NewCase {
+            guild_id: guild_id.get(),
+            target_user_id: Some(user.id.get()),
+            moderator_user_id: ctx.author().id.get(),
+            action: "terminate",
+            reason: &case_reason,
+            status: "active",
+            duration_seconds: Some(purge_duration_secs),
+        },
+    )
+    .await;
+
+    let mut final_embed = moderation_action_embed(
+        &target_profile,
+        user.id,
+        "terminated",
+        reason.as_deref(),
+        None,
+    );
+
+    if let Some(case_label) = case_label {
+        final_embed = final_embed.footer(serenity::CreateEmbedFooter::new(format!("#{}", case_label)));
+    }
+
     interaction
         .edit_response(
             ctx.http(),
-            serenity::EditInteractionResponse::new().content(final_content).embed(
-                moderation_action_embed(
-                    &target_profile,
-                    user.id,
-                    "terminated",
-                    reason.as_deref(),
-                    None,
-                ),
-            ),
+            serenity::EditInteractionResponse::new()
+                .content(final_content)
+                .embed(final_embed),
         )
         .await?;
 

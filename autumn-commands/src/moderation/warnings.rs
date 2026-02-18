@@ -95,7 +95,7 @@ pub async fn warnings(
                 let entry = &entries[reverse_index];
 
                 lines.push_str(&format!(
-                    "#{idx} • by <@{mod_id}>\nReason: {reason}\nWhen: <t:{ts}:R> • <t:{ts}:f>\n\n",
+                    "#{idx} • by <@{mod_id}>\n**Reason :** {reason}\n**When :** <t:{ts}:R> • <t:{ts}:f>\n\n",
                     idx = reverse_index + 1,
                     mod_id = entry.moderator_id,
                     reason = entry.reason.replace('@', "@\u{200B}"),

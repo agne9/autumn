@@ -5,7 +5,9 @@ use crate::moderation::embeds::{
     guild_only_message, moderation_action_embed, permission_denied_message, target_profile_from_user,
     usage_message,
 };
+use crate::moderation::logging::create_case_and_publish;
 use autumn_core::{Context, Error};
+use autumn_database::impls::cases::NewCase;
 use autumn_database::impls::warnings::record_warning;
 use autumn_utils::permissions::has_user_permission;
 
@@ -54,9 +56,27 @@ pub async fn warn(
     )
     .await?;
 
+    let case_label = create_case_and_publish(
+        &ctx,
+        guild_id,
+        NewCase {
+            guild_id: guild_id.get(),
+            target_user_id: Some(user.id.get()),
+            moderator_user_id: ctx.author().id.get(),
+            action: "warn",
+            reason: &reason,
+            status: "active",
+            duration_seconds: None,
+        },
+    )
+    .await;
+
     let action = format!("warned #{}", warning.warn_number);
     let target_profile = target_profile_from_user(&user);
-    let embed = moderation_action_embed(&target_profile, user.id, &action, Some(&reason), None);
+    let mut embed = moderation_action_embed(&target_profile, user.id, &action, Some(&reason), None);
+    if let Some(case_label) = case_label {
+        embed = embed.footer(serenity::CreateEmbedFooter::new(format!("#{}", case_label)));
+    }
     ctx.send(poise::CreateReply::default().embed(embed)).await?;
 
     Ok(())

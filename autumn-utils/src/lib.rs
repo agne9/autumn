@@ -4,6 +4,8 @@ pub mod cleanup;
 pub mod confirmation;
 /// Generic embed builders shared across commands.
 pub mod embed;
+/// Shared formatting helpers (case labels, action names, parsing).
+pub mod formatting;
 /// Single source of truth for the message-command prefix.
 pub const COMMAND_PREFIX: char = '!';
 /// Pure parser helpers.

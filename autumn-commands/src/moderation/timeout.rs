@@ -9,7 +9,10 @@ use crate::moderation::embeds::{
     guild_only_message, moderation_action_embed, permission_denied_message, target_profile_from_user,
     usage_message,
 };
+use crate::moderation::logging::create_case_and_publish;
 use autumn_core::{Context, Error};
+use autumn_database::impls::cases::NewCase;
+use autumn_utils::formatting::format_compact_duration;
 use autumn_utils::parse::parse_duration_seconds;
 use autumn_utils::permissions::has_user_permission;
 
@@ -56,11 +59,21 @@ pub async fn timeout(
         return Ok(());
     }
 
-    let parsed_duration = duration
-        .as_deref()
-        .and_then(parse_duration_seconds)
-        .unwrap_or(DEFAULT_TIMEOUT_SECS);
-    let duration_label = duration.unwrap_or_else(|| "10m".to_owned());
+    let parsed_duration = match duration.as_deref().map(str::trim) {
+        Some(raw) if !raw.is_empty() => {
+            let Some(seconds) = parse_duration_seconds(raw) else {
+                ctx.say(format!(
+                    "Invalid duration. Usage: `{}` (examples: 30s, 10m, 2h, 1d)",
+                    META.usage
+                ))
+                .await?;
+                return Ok(());
+            };
+            seconds
+        }
+        _ => DEFAULT_TIMEOUT_SECS,
+    };
+    let duration_label = format_compact_duration(parsed_duration);
 
     let until_system_time = SystemTime::now()
         .checked_add(Duration::from_secs(parsed_duration))
@@ -80,14 +93,36 @@ pub async fn timeout(
         return Ok(());
     }
 
+    let case_reason = reason
+        .as_deref()
+        .unwrap_or("No reason provided")
+        .to_owned();
+    let case_label = create_case_and_publish(
+        &ctx,
+        guild_id,
+        NewCase {
+            guild_id: guild_id.get(),
+            target_user_id: Some(user.id.get()),
+            moderator_user_id: ctx.author().id.get(),
+            action: "timeout",
+            reason: &case_reason,
+            status: "active",
+            duration_seconds: Some(parsed_duration),
+        },
+    )
+    .await;
+
     let target_profile = target_profile_from_user(&user);
-    let embed = moderation_action_embed(
+    let mut embed = moderation_action_embed(
         &target_profile,
         user.id,
         "timed out",
         reason.as_deref(),
         Some(&duration_label),
     );
+    if let Some(case_label) = case_label {
+        embed = embed.footer(serenity::CreateEmbedFooter::new(format!("#{}", case_label)));
+    }
     ctx.send(poise::CreateReply::default().embed(embed)).await?;
 
     Ok(())

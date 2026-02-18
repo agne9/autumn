@@ -11,7 +11,8 @@ use rustls::crypto::ring::default_provider;
 use sqlx::postgres::PgPoolOptions;
 
 use autumn_core::{Data, Error};
-use autumn_database::Database;
+use autumn_database::{Database, MIGRATOR};
+use autumn_database::impls::cases::ensure_case_schema_compat;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -47,6 +48,17 @@ async fn main() -> anyhow::Result<()> {
         .await?;
     info!("PostgreSQL connection established.");
     let db = Database::new(db_pool);
+
+    let auto_run_migrations = env_bool("AUTO_RUN_MIGRATIONS", false);
+    if auto_run_migrations {
+        MIGRATOR.run(db.pool()).await?;
+        info!("Database migrations applied.");
+
+        ensure_case_schema_compat(&db).await?;
+        info!("Case schema compatibility checks applied.");
+    } else {
+        info!("Auto migrations disabled (set AUTO_RUN_MIGRATIONS=true to run at startup).");
+    }
 
     let intents = serenity::GatewayIntents::GUILDS
         | serenity::GatewayIntents::GUILD_MESSAGES
@@ -87,6 +99,13 @@ async fn main() -> anyhow::Result<()> {
 
     client.start().await?;
     Ok(())
+}
+
+fn env_bool(key: &str, default: bool) -> bool {
+    match env::var(key) {
+        Ok(value) => matches!(value.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on"),
+        Err(_) => default,
+    }
 }
 
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {

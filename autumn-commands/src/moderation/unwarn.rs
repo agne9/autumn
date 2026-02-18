@@ -1,19 +1,25 @@
 use poise::serenity_prelude as serenity;
+use std::time::Duration;
 
 use crate::CommandMeta;
 use crate::moderation::embeds::{
     guild_only_message, permission_denied_message, usage_message,
 };
+use crate::moderation::logging::create_case_and_publish;
 use autumn_core::{Context, Error};
+use autumn_database::impls::cases::NewCase;
 use autumn_database::impls::warnings::{clear_warnings, remove_warning_by_number};
+use autumn_utils::confirmation::{ConfirmationResult, prompt_confirm_decline};
 use autumn_utils::permissions::has_user_permission;
 
 pub const META: CommandMeta = CommandMeta {
     name: "unwarn",
-    desc: "Remove a warning by number, or clear all warnings for a user.",
+    desc: "Remove a warning from a user.",
     category: "moderation",
     usage: "!unwarn <user> <warn_number|all>",
 };
+
+const UNWARN_ALL_CONFIRM_TIMEOUT_SECS: u64 = 30;
 
 #[poise::command(prefix_command, slash_command, category = "Moderation")]
 pub async fn unwarn(
@@ -54,11 +60,90 @@ pub async fn unwarn(
     };
 
     if selector.eq_ignore_ascii_case("all") {
+        let confirm_embed = serenity::CreateEmbed::new().description(format!(
+            "This will clear all warnings for <@{}>.",
+            user.id.get()
+        ));
+
+        let confirmation = prompt_confirm_decline(
+            ctx,
+            "Confirm warning clear",
+            confirm_embed,
+            Duration::from_secs(UNWARN_ALL_CONFIRM_TIMEOUT_SECS),
+        )
+        .await?;
+
+        let interaction = match confirmation {
+            ConfirmationResult::TimedOut(message) => {
+                message
+                    .channel_id
+                    .edit_message(
+                        ctx.http(),
+                        message.id,
+                        serenity::EditMessage::new()
+                            .content("Timed out")
+                            .embeds(vec![])
+                            .components(vec![]),
+                    )
+                    .await?;
+                return Ok(());
+            }
+            ConfirmationResult::Declined(interaction) => {
+                interaction
+                    .create_response(
+                        ctx.http(),
+                        serenity::CreateInteractionResponse::UpdateMessage(
+                            serenity::CreateInteractionResponseMessage::new()
+                                .content("Warning clear cancelled.")
+                                .embeds(vec![])
+                                .components(vec![]),
+                        ),
+                    )
+                    .await?;
+                return Ok(());
+            }
+            ConfirmationResult::Confirmed(interaction) => {
+                interaction
+                    .create_response(
+                        ctx.http(),
+                        serenity::CreateInteractionResponse::UpdateMessage(
+                            serenity::CreateInteractionResponseMessage::new()
+                                .content("Clearing warnings...")
+                                .embeds(vec![])
+                                .components(vec![]),
+                        ),
+                    )
+                    .await?;
+                interaction
+            }
+        };
+
         let removed = clear_warnings(&ctx.data().db, guild_id.get(), user.id.get()).await?;
-        ctx.say(format!(
-            "Removed {} warning(s) for {}.",
-            removed, target_label
-        ))
+        let case_reason = "No reason provided".to_owned();
+        let _case_label = create_case_and_publish(
+            &ctx,
+            guild_id,
+            NewCase {
+                guild_id: guild_id.get(),
+                target_user_id: Some(user.id.get()),
+                moderator_user_id: ctx.author().id.get(),
+                action: "unwarn_all",
+                reason: &case_reason,
+                status: "active",
+                duration_seconds: None,
+            },
+        )
+        .await;
+
+        interaction
+            .edit_response(
+                ctx.http(),
+                serenity::EditInteractionResponse::new().content(format!(
+                    "Removed {} warning(s) for {}.",
+                    removed, target_label
+                ))
+                .embeds(vec![]),
+            )
         .await?;
         return Ok(());
     }
@@ -82,6 +167,22 @@ pub async fn unwarn(
     .await?;
 
     if removed {
+        let case_reason = "No reason provided".to_owned();
+        let _case_label = create_case_and_publish(
+            &ctx,
+            guild_id,
+            NewCase {
+                guild_id: guild_id.get(),
+                target_user_id: Some(user.id.get()),
+                moderator_user_id: ctx.author().id.get(),
+                action: "unwarn",
+                reason: &case_reason,
+                status: "active",
+                duration_seconds: None,
+            },
+        )
+        .await;
+
         ctx.say(format!(
             "Removed warning #{} for {}.",
             warning_number, target_label

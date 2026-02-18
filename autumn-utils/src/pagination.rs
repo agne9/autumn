@@ -12,15 +12,19 @@ fn build_page_embed(
     page: usize,
     total_pages: usize,
     author_icon_url: Option<&str>,
+    show_footer: bool,
 ) -> serenity::CreateEmbed {
     let mut embed = serenity::CreateEmbed::new()
         .color(DEFAULT_EMBED_COLOR)
-        .description(description.to_owned())
-        .footer(serenity::CreateEmbedFooter::new(format!(
+        .description(description.to_owned());
+
+    if show_footer {
+        embed = embed.footer(serenity::CreateEmbedFooter::new(format!(
             "Page {}/{}",
             page.max(1),
             total_pages.max(1)
         )));
+    }
 
     if let Some(url) = author_icon_url {
         embed = embed.author(serenity::CreateEmbedAuthor::new(title).icon_url(url));
@@ -95,6 +99,7 @@ where
                 current_page + 1,
                 total_pages,
                 author_icon_url,
+                false,
             )),
         )
         .await?;
@@ -118,6 +123,7 @@ where
                     current_page + 1,
                     total_pages,
                     author_icon_url,
+                    true,
                 ))
                 .components(pagination_components(
                     &prev_button_id,
@@ -162,6 +168,7 @@ where
                                 current_page + 1,
                                 total_pages,
                                 author_icon_url,
+                                true,
                             ))
                             .components(pagination_components(
                                 &prev_button_id,
@@ -190,6 +197,7 @@ where
                                 current_page + 1,
                                 total_pages,
                                 author_icon_url,
+                                true,
                             ))
                             .components(pagination_components(
                                 &prev_button_id,
@@ -271,6 +279,7 @@ where
                                 current_page + 1,
                                 total_pages,
                                 author_icon_url,
+                                true,
                             ))
                             .components(pagination_components(
                                 &prev_button_id,
@@ -295,6 +304,7 @@ where
                 current_page + 1,
                 total_pages,
                 author_icon_url,
+                true,
             )),
         )
         .await;

@@ -1,6 +1,11 @@
 pub mod ban;
+pub mod case;
 mod embeds;
 pub mod kick;
+mod logging;
+pub mod modlogchannel;
+pub mod modlogs;
+pub mod notes;
 pub mod permissions;
 pub mod purge;
 pub mod terminate;
