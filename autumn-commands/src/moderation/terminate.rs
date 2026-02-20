@@ -12,11 +12,9 @@ use crate::moderation::embeds::{
 use crate::moderation::logging::create_case_and_publish;
 use autumn_core::{Context, Error};
 use autumn_database::impls::cases::NewCase;
-use autumn_utils::cleanup::purge_user_globally;
 use autumn_utils::confirmation::{ConfirmationResult, prompt_confirm_decline};
 use autumn_utils::parse::parse_duration_seconds;
 use autumn_utils::permissions::has_user_permission;
-use autumn_utils::time::now_unix_secs;
 
 pub const META: CommandMeta = CommandMeta {
     name: "terminate",
@@ -68,6 +66,15 @@ pub async fn terminate(
                 return Ok(());
             };
 
+            if duration_secs > u64::from(MAX_NATIVE_BAN_DELETE_DAYS) * SECONDS_PER_DAY {
+                ctx.say(format!(
+                    "Invalid purge period. Max is 7d. Usage: `{}` (examples: 30s, 10m, 2h, 7d)",
+                    META.usage
+                ))
+                .await?;
+                return Ok(());
+            }
+
             (duration_secs, first.to_owned(), reason_rest)
         }
         None => (
@@ -77,12 +84,9 @@ pub async fn terminate(
         ),
     };
 
-    let cutoff_secs = Some(now_unix_secs().saturating_sub(purge_duration_secs));
     let native_delete_days = purge_duration_secs
         .div_ceil(SECONDS_PER_DAY)
         .min(u64::from(MAX_NATIVE_BAN_DELETE_DAYS)) as u8;
-    let use_native_cleanup =
-        purge_duration_secs <= u64::from(MAX_NATIVE_BAN_DELETE_DAYS) * SECONDS_PER_DAY;
 
     let target_profile = target_profile_from_user(&user);
     let confirmation_embed = moderation_action_embed(
@@ -171,7 +175,7 @@ pub async fn terminate(
     if let Err(source) = guild_id.ban_with_reason(
         ctx.http(),
         user.id,
-        if use_native_cleanup { native_delete_days } else { 0 },
+        native_delete_days,
         reason.as_deref().unwrap_or("No reason provided"),
     )
     .await
@@ -198,14 +202,10 @@ pub async fn terminate(
         .edit_response(
             ctx.http(),
             serenity::EditInteractionResponse::new()
-                .content(if use_native_cleanup {
-                    format!(
-                        "Ban applied. Discord native cleanup executed (up to {} day(s)).",
-                        native_delete_days
-                    )
-                } else {
-                    "Ban applied. Purging messages...".to_owned()
-                })
+                .content(format!(
+                    "Ban applied. Discord native cleanup executed (up to {} day(s)).",
+                    native_delete_days
+                ))
                 .embed(moderation_action_embed(
                     &target_profile,
                     user.id,
@@ -216,28 +216,10 @@ pub async fn terminate(
         )
         .await?;
 
-    let final_content = if use_native_cleanup {
-        format!(
-            "Ban applied. Native cleanup done.\nPurge period: last {} day(s)",
-            native_delete_days
-        )
-    } else {
-        let deleted_count = purge_user_globally(ctx.http(), guild_id, user.id, cutoff_secs)
-            .await
-            .unwrap_or_else(|source| {
-                error!(?source, "terminate purge failed");
-                0
-            });
-
-        let window = cutoff_secs
-            .map(|cutoff| format!("since <t:{}:R>", cutoff))
-            .unwrap_or_else(|| "all accessible history".to_owned());
-
-        format!(
-            "Ban applied. Deleted {} message(s).\nPurge period: {}",
-            deleted_count, window
-        )
-    };
+    let final_content = format!(
+        "Ban applied. Native cleanup done.\nPurge period: last {} day(s)",
+        native_delete_days
+    );
 
     let case_reason = reason
         .as_deref()
