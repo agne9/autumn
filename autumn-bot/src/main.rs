@@ -10,8 +10,10 @@ use tracing_subscriber::Layer;
 use rustls::crypto::ring::default_provider;
 use sqlx::postgres::PgPoolOptions;
 
+use autumn_llm::LlmService;
 use autumn_core::{Data, Error};
 use autumn_database::{Database, MIGRATOR};
+use autumn_database::impls::llm_chat::insert_llm_chat_message;
 use autumn_database::impls::cases::ensure_case_schema_compat;
 
 #[tokio::main]
@@ -48,6 +50,7 @@ async fn main() -> anyhow::Result<()> {
         .await?;
     info!("PostgreSQL connection established.");
     let db = Database::new(db_pool);
+    let llm = LlmService::from_env()?;
 
     let auto_run_migrations = env_bool("AUTO_RUN_MIGRATIONS", true);
     if auto_run_migrations {
@@ -67,6 +70,9 @@ async fn main() -> anyhow::Result<()> {
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: autumn_commands::commands(),
+            event_handler: |ctx, event, framework, data| {
+                Box::pin(handle_event(ctx, event, framework, data))
+            },
             on_error: |error| Box::pin(on_error(error)),
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some(autumn_utils::COMMAND_PREFIX.to_string()),
@@ -76,6 +82,8 @@ async fn main() -> anyhow::Result<()> {
             ..Default::default()
         })
         .setup(move |ctx, _ready, framework| {
+            let db = db.clone();
+            let llm = llm.clone();
             Box::pin(async move {
                 info!("Autumn has awoken!");
 
@@ -86,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .await?;
 
-                Ok(Data { db })
+                Ok(Data { db, llm })
             })
         })
         .build();
@@ -133,4 +141,127 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
             error!(?other, "framework error");
         }
     }
+}
+
+async fn handle_event(
+    ctx: &serenity::Context,
+    event: &serenity::FullEvent,
+    _framework: poise::FrameworkContext<'_, Data, Error>,
+    data: &Data,
+) -> Result<(), Error> {
+    let serenity::FullEvent::Message { new_message } = event else {
+        return Ok(());
+    };
+
+    if new_message.author.bot || new_message.webhook_id.is_some() {
+        return Ok(());
+    }
+
+    let Some(guild_id) = new_message.guild_id else {
+        return Ok(());
+    };
+
+    let mentions_bot = match new_message.mentions_me(ctx).await {
+        Ok(value) => value,
+        Err(source) => {
+            error!(?source, "failed to evaluate bot mention");
+            false
+        }
+    };
+
+    if !mentions_bot {
+        return Ok(());
+    }
+
+    let bot_user_id = ctx.cache.current_user().id;
+    let author_display_name = message_display_name(new_message);
+    let bot_display_name = ctx.cache.current_user().name.clone();
+    let prompt = strip_bot_mention(&new_message.content, bot_user_id).trim().to_owned();
+
+    if prompt.is_empty() {
+        new_message.reply(&ctx.http, "What do you need?").await?;
+        return Ok(());
+    }
+
+    let _ = new_message.channel_id.broadcast_typing(&ctx.http).await;
+
+    let llm_reply = match data
+        .llm
+        .generate_channel_reply(
+            &data.db,
+            guild_id.get(),
+            new_message.channel_id.get(),
+            &prompt,
+            &author_display_name,
+        )
+        .await
+    {
+        Ok(content) if !content.trim().is_empty() => content,
+        Ok(_) => "I couldn't generate a useful response for that. Try rephrasing?".to_owned(),
+        Err(source) => {
+            error!(?source, "llm reply generation failed");
+            new_message
+                .reply(&ctx.http, "I ran into an LLM error. Try again in a moment.")
+                .await?;
+            return Ok(());
+        }
+    };
+
+    if let Err(source) = insert_llm_chat_message(
+        &data.db,
+        guild_id.get(),
+        new_message.channel_id.get(),
+        new_message.author.id.get(),
+        Some(author_display_name.as_str()),
+        "user",
+        &prompt,
+    )
+    .await
+    {
+        error!(?source, "failed to persist user llm chat message");
+    }
+
+    new_message.reply(&ctx.http, &llm_reply).await?;
+
+    if let Err(source) = insert_llm_chat_message(
+        &data.db,
+        guild_id.get(),
+        new_message.channel_id.get(),
+        bot_user_id.get(),
+        Some(bot_display_name.as_str()),
+        "assistant",
+        &llm_reply,
+    )
+    .await
+    {
+        error!(?source, "failed to persist assistant llm chat message");
+    }
+
+    Ok(())
+}
+
+fn strip_bot_mention(content: &str, bot_user_id: serenity::UserId) -> String {
+    content
+        .replace(&format!("<@{}>", bot_user_id.get()), "")
+        .replace(&format!("<@!{}>", bot_user_id.get()), "")
+        .trim()
+        .to_owned()
+}
+
+fn message_display_name(message: &serenity::Message) -> String {
+    if let Some(member) = &message.member {
+        if let Some(nick) = &member.nick
+            && !nick.trim().is_empty()
+        {
+            return nick.clone();
+        }
+    }
+
+    if let Some(global_name) = &message.author.global_name
+        && !global_name.trim().is_empty()
+    {
+        return global_name.clone();
+    }
+
+    message.author.name.clone()
 }
