@@ -161,24 +161,26 @@ pub async fn case(
             return Ok(());
         }
     };
-    let mut description = format!(
-        "**Action :** {}\n**Moderator :** <@{}>\n**Reason :** {}\n**Created :** <t:{}:f>",
-        action_display_name(&case.action),
-        case.moderator_user_id,
-        case.reason.replace('@', "@\u{200B}"),
-        case.created_at,
-    );
+    let mut fields = Vec::new();
+    fields.push(format!("Action : {}", action_display_name(&case.action)));
 
     if let Some(target_user_id) = case.target_user_id {
-        description = format!("{}\n**Target :** <@{}>", description, target_user_id);
+        fields.push(format!("Target : <@{}>", target_user_id));
     }
 
+    fields.push(format!("Reason : {}", case.reason.replace('@', "@\u{200B}")));
+    fields.push(format!("Moderator : <@{}>", case.moderator_user_id));
+
     if let Some(duration_seconds) = case.duration_seconds {
-        description.push_str(&format!(
-            "\n**Duration :** {}",
+        fields.push(format!(
+            "Duration : {}",
             format_compact_duration(duration_seconds)
         ));
     }
+
+    fields.push(format!("Created : <t:{}:f>", case.created_at));
+
+    let mut description = fields.join("\n");
 
     if let Some(note) = events
         .iter()

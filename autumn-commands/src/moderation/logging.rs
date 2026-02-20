@@ -47,16 +47,30 @@ async fn publish_case_to_modlog_channel(
         return Ok(());
     };
 
-    let target_display = case
-        .target_user_id
-        .map(|id| format!("<@{}>", id))
-        .unwrap_or_else(|| "N/A".to_owned());
-
     let action_name = action_display_name(&case.action);
-    let duration_line = case
-        .duration_seconds
-        .map(|seconds| format!("\n**Duration :** {}", format_compact_duration(seconds)))
-        .unwrap_or_default();
+    let mut fields = Vec::new();
+    fields.push(format!("Action : {}", action_name));
+
+    if let Some(target_user_id) = case.target_user_id {
+        fields.push(format!("Target : <@{}>", target_user_id));
+    }
+
+    fields.push(format!("Reason : {}", case.reason.replace('@', "@\u{200B}")));
+    fields.push(format!("Moderator : <@{}>", case.moderator_user_id));
+
+    if let Some(duration_seconds) = case.duration_seconds {
+        fields.push(format!(
+            "Duration : {}",
+            format_compact_duration(duration_seconds)
+        ));
+    }
+
+    fields.push(format!(
+        "When : <t:{}:R> • <t:{}:f>",
+        case.created_at, case.created_at,
+    ));
+
+    let description = fields.join("\n");
 
     let embed = serenity::CreateEmbed::new()
         .color(DEFAULT_EMBED_COLOR)
@@ -64,16 +78,7 @@ async fn publish_case_to_modlog_channel(
             "#{}",
             format_case_label(&case.case_code, case.action_case_number)
         ))
-        .description(format!(
-            "**Action :** {}\n**Target :** {}\n**Moderator :** <@{}>\n**Reason :** {}{}\n**When :** <t:{}:R> • <t:{}:f>",
-            action_name,
-            target_display,
-            case.moderator_user_id,
-            case.reason.replace('@', "@\u{200B}"),
-            duration_line,
-            case.created_at,
-            case.created_at,
-        ));
+        .description(description);
 
     serenity::ChannelId::new(channel_id)
         .send_message(ctx.http(), serenity::CreateMessage::new().embed(embed))

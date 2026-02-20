@@ -7,7 +7,6 @@ use crate::CommandMeta;
 use crate::moderation::logging::create_case_and_publish;
 use autumn_core::{Context, Error};
 use autumn_database::impls::cases::NewCase;
-use autumn_utils::confirmation::{prompt_confirm_decline, resolve_confirmation_result};
 use autumn_utils::permissions::has_user_permission;
 
 pub const META: CommandMeta = CommandMeta {
@@ -18,7 +17,6 @@ pub const META: CommandMeta = CommandMeta {
 };
 
 const MAX_PURGE: u16 = 100;
-const PURGE_CONFIRM_TIMEOUT_SECS: u64 = 30;
 
 #[poise::command(prefix_command, slash_command, category = "Moderation")]
 pub async fn purge(
@@ -51,35 +49,9 @@ pub async fn purge(
         return Ok(());
     }
 
-    let amount = requested.min(MAX_PURGE);
-    let delete_count = amount.saturating_add(1).min(MAX_PURGE);
-
-    let confirm_embed = serenity::CreateEmbed::new().description(format!(
-        "This will delete up to {} recent message(s) in this channel.",
-        amount
-    ));
-    let confirmation = prompt_confirm_decline(
-        ctx,
-        "Confirm purge",
-        confirm_embed,
-        Duration::from_secs(PURGE_CONFIRM_TIMEOUT_SECS),
-    )
-    .await?;
-
-    let Some(interaction) = resolve_confirmation_result(
-        ctx,
-        confirmation,
-        "Timed out",
-        "Purge cancelled.",
-        "Purging...",
-    )
-    .await?
-    else {
-        return Ok(());
-    };
+    let delete_count = requested.saturating_add(1).min(MAX_PURGE);
 
     let channel_id = ctx.channel_id();
-    let interaction_message_id = interaction.message.id;
     let messages = channel_id
         .messages(ctx.http(), serenity::GetMessages::new().limit(delete_count as u8))
         .await?;
@@ -87,18 +59,11 @@ pub async fn purge(
     let ids: Vec<serenity::MessageId> = messages
         .into_iter()
         .map(|message| message.id)
-        .filter(|id| *id != interaction_message_id)
         .collect();
+    let deleted_count = ids.len();
 
     if ids.is_empty() {
-        interaction
-            .edit_response(
-                ctx.http(),
-                serenity::EditInteractionResponse::new()
-                    .content("No messages found to delete.")
-                    .embeds(vec![]),
-            )
-            .await?;
+        ctx.say("No messages found to delete.").await?;
         return Ok(());
     }
 
@@ -110,13 +75,7 @@ pub async fn purge(
 
     if let Err(source) = delete_result {
         error!(?source, "purge delete request failed");
-        interaction
-            .edit_response(
-                ctx.http(),
-                serenity::EditInteractionResponse::new()
-                    .content("I couldn't delete messages. I likely need the 'Manage Messages' permission.")
-                    .embeds(vec![]),
-            )
+        ctx.say("I couldn't delete messages. I likely need the 'Manage Messages' permission.")
             .await?;
         return Ok(());
     }
@@ -137,19 +96,12 @@ pub async fn purge(
     )
     .await;
 
-    let confirmation_text = format!("Purged {} message(s).", amount);
-
-    interaction
-        .edit_response(
-            ctx.http(),
-            serenity::EditInteractionResponse::new()
-                .content(confirmation_text)
-                .embeds(vec![]),
-        )
+    let success_message = channel_id
+        .say(ctx.http(), format!("Purged {} message(s).", deleted_count))
         .await?;
 
     sleep(Duration::from_secs(3)).await;
-    let _ = interaction.delete_response(ctx.http()).await;
+    let _ = success_message.delete(ctx.http()).await;
 
     Ok(())
 }

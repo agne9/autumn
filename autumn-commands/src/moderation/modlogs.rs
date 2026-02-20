@@ -74,30 +74,33 @@ pub async fn modlogs(
         body.push_str(&format!("Total cases: **{}**\n\n", total));
         for case in &rows[start..end] {
             let action_name = action_display_name(&case.action);
-            let mut entry = format!(
-                "#{}\n**Action :** {}\n**Moderator :** <@{}>\n**Reason :** {}",
-                format_case_label(&case.case_code, case.action_case_number),
-                action_name,
-                case.moderator_user_id,
-                case.reason.replace('@', "@\u{200B}"),
-            );
+            let mut fields = Vec::new();
+            fields.push(format!("Action : {}", action_name));
 
             if let Some(target_user_id) = case.target_user_id {
-                entry.push_str(&format!("\n**Target :** <@{}>", target_user_id));
+                fields.push(format!("Target : <@{}>", target_user_id));
             }
 
+            fields.push(format!("Reason : {}", case.reason.replace('@', "@\u{200B}")));
+            fields.push(format!("Moderator : <@{}>", case.moderator_user_id));
+
             if let Some(duration_seconds) = case.duration_seconds {
-                entry.push_str(&format!(
-                    "\n**Duration :** {}",
+                fields.push(format!(
+                    "Duration : {}",
                     format_compact_duration(duration_seconds)
                 ));
             }
 
-            entry.push_str(&format!(
-                "\n**When :** <t:{}:R> • <t:{}:f>\n\n",
+            fields.push(format!(
+                "When : <t:{}:R> • <t:{}:f>",
                 case.created_at, case.created_at,
             ));
-            body.push_str(&entry);
+
+            body.push_str(&format!(
+                "#{}\n{}\n\n",
+                format_case_label(&case.case_code, case.action_case_number),
+                fields.join("\n"),
+            ));
         }
 
         pages.push(body.trim_end().to_owned());

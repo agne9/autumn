@@ -45,7 +45,7 @@ pub async fn warn(
     };
 
     let reason = reason.unwrap_or_else(|| "No reason provided".to_owned());
-    let warning = record_warning(
+    record_warning(
         &ctx.data().db,
         guild_id.get(),
         user.id.get(),
@@ -69,9 +69,9 @@ pub async fn warn(
     )
     .await;
 
-    let action = format!("warned #{}", warning.warn_number);
+    let action = "warned";
     let target_profile = target_profile_from_user(&user);
-    let mut embed = moderation_action_embed(&target_profile, user.id, &action, Some(&reason), None);
+    let mut embed = moderation_action_embed(&target_profile, user.id, action, Some(&reason), None);
     if let Some(case_label) = case_label {
         embed = embed.footer(serenity::CreateEmbedFooter::new(format!("#{}", case_label)));
     }
