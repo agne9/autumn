@@ -6,22 +6,37 @@ pub fn format_case_label(case_code: &str, action_case_number: u64) -> String {
 /// Convert internal action identifiers to user-facing names.
 pub fn action_display_name(action: &str) -> String {
     match action {
-        "warn" => "Warned".to_owned(),
-        "ban" => "Banned".to_owned(),
-        "kick" => "Kicked".to_owned(),
+        "warn" => "Warn".to_owned(),
+        "ban" => "Ban".to_owned(),
+        "kick" => "Kick".to_owned(),
         "timeout" => "Timeout".to_owned(),
-        "unban" => "Unbanned".to_owned(),
+        "unban" => "Unban".to_owned(),
         "untimeout" => "Untimeout".to_owned(),
-        "unwarn" => "Unwarned".to_owned(),
-        "unwarn_all" => "Unwarned All".to_owned(),
-        "purge" => "Purged".to_owned(),
-        "terminate" => "Terminated".to_owned(),
+        "unwarn" => "Unwarn".to_owned(),
+        "unwarn_all" => "Unwarn All".to_owned(),
+        "purge" => "Purge".to_owned(),
+        "terminate" => "Terminate".to_owned(),
         other => {
-            let mut chars = other.chars();
-            match chars.next() {
-                Some(first) => format!("{}{}", first.to_uppercase(), chars.as_str()),
-                None => "Unknown".to_owned(),
+            let normalized = other.trim();
+            if normalized.is_empty() {
+                return "Unknown".to_owned();
             }
+
+            normalized
+                .split('_')
+                .filter(|part| !part.is_empty())
+                .map(|part| {
+                    let mut chars = part.chars();
+                    match chars.next() {
+                        Some(first) => {
+                            format!("{}{}", first.to_uppercase(), chars.as_str().to_ascii_lowercase())
+                        }
+                        None => String::new(),
+                    }
+                })
+                .filter(|part| !part.is_empty())
+                .collect::<Vec<_>>()
+                .join(" ")
         }
     }
 }
@@ -120,9 +135,9 @@ mod tests {
 
     #[test]
     fn action_names_are_user_friendly() {
-        assert_eq!(action_display_name("warn"), "Warned");
-        assert_eq!(action_display_name("unwarn_all"), "Unwarned All");
-        assert_eq!(action_display_name("custom_action"), "Custom_action");
+        assert_eq!(action_display_name("warn"), "Warn");
+        assert_eq!(action_display_name("unwarn_all"), "Unwarn All");
+        assert_eq!(action_display_name("custom_action"), "Custom Action");
     }
 
     #[test]

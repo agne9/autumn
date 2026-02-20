@@ -161,18 +161,17 @@ pub async fn case(
             return Ok(());
         }
     };
-    let target_display = case
-        .target_user_id
-        .map(|id| format!("<@{}>", id))
-        .unwrap_or_else(|| "N/A".to_owned());
     let mut description = format!(
-        "**Action :** {}\n**Target :** {}\n**Moderator :** <@{}>\n**Reason :** {}\n**Created :** <t:{}:f>",
+        "**Action :** {}\n**Moderator :** <@{}>\n**Reason :** {}\n**Created :** <t:{}:f>",
         action_display_name(&case.action),
-        target_display,
         case.moderator_user_id,
         case.reason.replace('@', "@\u{200B}"),
         case.created_at,
     );
+
+    if let Some(target_user_id) = case.target_user_id {
+        description = format!("{}\n**Target :** <@{}>", description, target_user_id);
+    }
 
     if let Some(duration_seconds) = case.duration_seconds {
         description.push_str(&format!(

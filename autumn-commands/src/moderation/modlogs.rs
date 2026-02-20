@@ -73,27 +73,31 @@ pub async fn modlogs(
         let mut body = String::new();
         body.push_str(&format!("Total cases: **{}**\n\n", total));
         for case in &rows[start..end] {
-            let target_display = case
-                .target_user_id
-                .map(|id| format!("<@{}>", id))
-                .unwrap_or_else(|| "N/A".to_owned());
             let action_name = action_display_name(&case.action);
-            let duration_line = case
-                .duration_seconds
-                .map(|seconds| format!("\n**Duration :** {}", format_compact_duration(seconds)))
-                .unwrap_or_default();
-
-            body.push_str(&format!(
-                "#{}\n**Action :** {}\n**Target :** {}\n**Moderator :** <@{}>\n**Reason :** {}{}\n**When :** <t:{}:R> • <t:{}:f>\n\n",
+            let mut entry = format!(
+                "#{}\n**Action :** {}\n**Moderator :** <@{}>\n**Reason :** {}",
                 format_case_label(&case.case_code, case.action_case_number),
                 action_name,
-                target_display,
                 case.moderator_user_id,
                 case.reason.replace('@', "@\u{200B}"),
-                duration_line,
-                case.created_at,
-                case.created_at,
+            );
+
+            if let Some(target_user_id) = case.target_user_id {
+                entry.push_str(&format!("\n**Target :** <@{}>", target_user_id));
+            }
+
+            if let Some(duration_seconds) = case.duration_seconds {
+                entry.push_str(&format!(
+                    "\n**Duration :** {}",
+                    format_compact_duration(duration_seconds)
+                ));
+            }
+
+            entry.push_str(&format!(
+                "\n**When :** <t:{}:R> • <t:{}:f>\n\n",
+                case.created_at, case.created_at,
             ));
+            body.push_str(&entry);
         }
 
         pages.push(body.trim_end().to_owned());
