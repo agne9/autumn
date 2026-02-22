@@ -179,7 +179,7 @@ async fn handle_event(
     let prompt = strip_bot_mention(&new_message.content, bot_user_id).trim().to_owned();
 
     if prompt.is_empty() {
-        new_message.reply(&ctx.http, "What do you need?").await?;
+        new_message.reply(&ctx.http, "a?").await?;
         return Ok(());
     }
 
