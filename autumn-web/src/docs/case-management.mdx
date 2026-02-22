@@ -1,0 +1,35 @@
+# Case Management
+
+Autumn leverages PostgreSQL to store a persistent, immutable log of all moderation actions taken against users globally.
+
+## `!case`
+Lookup a specific moderation case by its exact ID.
+
+**Usage:**
+```bash
+!case <id>
+```
+
+## `!modlogs`
+View the complete moderation history across the server.
+
+**Usage:**
+```bash
+!modlogs
+```
+
+## `!warnings`
+List all warnings for a user.
+
+**Usage:**
+```bash
+!warnings <@user>
+```
+
+## `!notes`
+Add a hidden, staff-only note to a user's profile.
+
+**Usage:**
+```bash
+!notes add <@user> <text>
+```

@@ -1,0 +1,65 @@
+# Core Moderation
+
+Autumn provides blazing fast, concurrent moderation commands for active communities. 
+
+## `!ban`
+Permanently ban a user from the server with an optional reason.
+
+**Usage:**
+```bash
+!ban <@user> [reason]
+```
+
+## `!kick`
+Remove a user from the server gracefully.
+
+**Usage:**
+```bash
+!kick <@user> [reason]
+```
+
+## `!timeout`
+Restrict a user from sending messages for a specified duration.
+
+**Usage:**
+```bash
+!timeout <@user> <duration> [reason]
+```
+
+*(Duration examples: `10m`, `1h`, `1d`)*
+
+## `!warn`
+Issue a formal warning to a user, recorded directly in their permanent modlog.
+
+**Usage:**
+```bash
+!warn <@user> <reason>
+```
+
+## `!purge`
+Bulk delete a specific number of recent messages in the current channel.
+
+**Usage:**
+```bash
+!purge <1-100>
+```
+
+## `!terminate`
+**Extreme.** Bans a user and wipes all their message history instantly.
+
+**Usage:**
+```bash
+!terminate <@user> [reason]
+```
+
+
+## `!permissions`
+Check which permissions a user has in the current server.
+
+**Usage:**
+```bash
+!permissions <@user>
+```
+
+**Description:**
+Requires `Manage Messages` permission. Displays the current user's active permissions matrix within the server context.

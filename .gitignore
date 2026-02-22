@@ -19,3 +19,9 @@ SYSTEM_PROMPT.md
 
 # Local
 /scripts/
+
+# web frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
