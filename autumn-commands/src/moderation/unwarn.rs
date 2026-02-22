@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use crate::CommandMeta;
 use crate::moderation::embeds::{
-    guild_only_message, usage_message,
+    guild_only_message, moderation_bot_target_message, usage_message,
 };
 use crate::moderation::logging::create_case_and_publish;
 use autumn_core::{Context, Error};
@@ -47,6 +47,12 @@ pub async fn unwarn(
         ctx.say(usage_message(META.usage)).await?;
         return Ok(());
     };
+
+    if user.bot {
+        ctx.say(moderation_bot_target_message()).await?;
+        return Ok(());
+    }
+
     let target_label = user
         .global_name
         .as_deref()
@@ -85,7 +91,20 @@ pub async fn unwarn(
         };
 
         let removed = clear_warnings(&ctx.data().db, guild_id.get(), user.id.get()).await?;
+        if removed == 0 {
+            interaction
+                .edit_response(
+                    ctx.http(),
+                    serenity::EditInteractionResponse::new()
+                        .content(format!("{} has no warnings to clear.", target_label))
+                        .embeds(vec![]),
+                )
+                .await?;
+            return Ok(());
+        }
+
         let case_reason = "No reason provided".to_owned();
+
         let _case_label = create_case_and_publish(
             &ctx,
             guild_id,
@@ -134,6 +153,7 @@ pub async fn unwarn(
 
     if removed {
         let case_reason = "No reason provided".to_owned();
+
         let _case_label = create_case_and_publish(
             &ctx,
             guild_id,

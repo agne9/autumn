@@ -4,7 +4,10 @@ use poise::serenity_prelude as serenity;
 
 use crate::CommandMeta;
 use crate::moderation::embeds::{
-    guild_only_message, moderation_action_embed, target_profile_from_user, usage_message,
+    guild_only_message, is_missing_permissions_error, moderation_action_embed,
+    moderation_bot_target_message,
+    send_moderation_target_dm_for_guild,
+    target_profile_from_user, usage_message,
 };
 use crate::moderation::logging::create_case_and_publish;
 use autumn_core::{Context, Error};
@@ -45,6 +48,11 @@ pub async fn kick(
         return Ok(());
     };
 
+    if user.bot {
+        ctx.say(moderation_bot_target_message()).await?;
+        return Ok(());
+    }
+
     if user.id == ctx.author().id {
         ctx.say("You can't kick yourself.").await?;
         return Ok(());
@@ -58,7 +66,9 @@ pub async fn kick(
     .await;
 
     if let Err(source) = kick_result {
-        error!(?source, "kick request failed");
+        if !is_missing_permissions_error(&source) {
+            error!(?source, "kick request failed");
+        }
         ctx.say("I couldn't kick that user. Check role hierarchy and permissions.")
             .await?;
         return Ok(());
@@ -68,6 +78,17 @@ pub async fn kick(
         .as_deref()
         .unwrap_or("No reason provided")
         .to_owned();
+
+    let _ = send_moderation_target_dm_for_guild(
+        ctx.http(),
+        &user,
+        guild_id,
+        "kicked",
+        Some(&case_reason),
+        None,
+    )
+    .await;
+
     let case_label = create_case_and_publish(
         &ctx,
         guild_id,

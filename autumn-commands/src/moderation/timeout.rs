@@ -6,7 +6,9 @@ use poise::serenity_prelude as serenity;
 
 use crate::CommandMeta;
 use crate::moderation::embeds::{
-    guild_only_message, moderation_action_embed, target_profile_from_user, usage_message,
+    guild_only_message, is_missing_permissions_error, moderation_action_embed,
+    moderation_bot_target_message,
+    send_moderation_target_dm_for_guild, target_profile_from_user, usage_message,
 };
 use crate::moderation::logging::create_case_and_publish;
 use autumn_core::{Context, Error};
@@ -23,6 +25,52 @@ pub const META: CommandMeta = CommandMeta {
 };
 
 const DEFAULT_TIMEOUT_SECS: u64 = 10 * 60;
+
+fn split_timeout_duration_and_reason(
+    duration: Option<&str>,
+    reason: Option<&str>,
+) -> (Option<String>, Option<String>) {
+    let mut duration_parts = Vec::new();
+    if let Some(raw_duration) = duration.map(str::trim).filter(|value| !value.is_empty()) {
+        duration_parts.push(raw_duration.to_owned());
+    }
+
+    let mut reason_tokens = Vec::new();
+    if let Some(rest) = reason {
+        let mut tokens = rest.split_whitespace();
+        let collect_more_duration = !duration_parts.is_empty();
+
+        while let Some(token) = tokens.next() {
+            if token == "--" {
+                reason_tokens.extend(tokens.map(str::to_owned));
+                break;
+            }
+
+            if collect_more_duration && parse_duration_seconds(token).is_some() {
+                duration_parts.push(token.to_owned());
+                continue;
+            }
+
+            reason_tokens.push(token.to_owned());
+            reason_tokens.extend(tokens.map(str::to_owned));
+            break;
+        }
+    }
+
+    let parsed_duration_input = if duration_parts.is_empty() {
+        None
+    } else {
+        Some(duration_parts.join(" "))
+    };
+
+    let parsed_reason = if reason_tokens.is_empty() {
+        None
+    } else {
+        Some(reason_tokens.join(" "))
+    };
+
+    (parsed_duration_input, parsed_reason)
+}
 
 #[poise::command(prefix_command, slash_command, category = "Moderation")]
 pub async fn timeout(
@@ -52,12 +100,20 @@ pub async fn timeout(
         return Ok(());
     };
 
+    if user.bot {
+        ctx.say(moderation_bot_target_message()).await?;
+        return Ok(());
+    }
+
     if user.id == ctx.author().id {
         ctx.say("You can't timeout yourself.").await?;
         return Ok(());
     }
 
-    let parsed_duration = match duration.as_deref().map(str::trim) {
+    let (duration_input, parsed_reason) =
+        split_timeout_duration_and_reason(duration.as_deref(), reason.as_deref());
+
+    let parsed_duration = match duration_input.as_deref().map(str::trim) {
         Some(raw) if !raw.is_empty() => {
             let Some(seconds) = parse_duration_seconds(raw) else {
                 ctx.say(format!(
@@ -85,16 +141,29 @@ pub async fn timeout(
     let timeout_result = guild_id.edit_member(ctx.http(), user.id, edit).await;
 
     if let Err(source) = timeout_result {
-        error!(?source, "timeout request failed");
+        if !is_missing_permissions_error(&source) {
+            error!(?source, "timeout request failed");
+        }
         ctx.say("I couldn't timeout that user. Check role hierarchy and permissions.")
             .await?;
         return Ok(());
     }
 
-    let case_reason = reason
+    let case_reason = parsed_reason
         .as_deref()
         .unwrap_or("No reason provided")
         .to_owned();
+
+    let _ = send_moderation_target_dm_for_guild(
+        ctx.http(),
+        &user,
+        guild_id,
+        "timed out",
+        Some(&case_reason),
+        Some(&duration_label),
+    )
+    .await;
+
     let case_label = create_case_and_publish(
         &ctx,
         guild_id,
@@ -115,7 +184,7 @@ pub async fn timeout(
         &target_profile,
         user.id,
         "timed out",
-        reason.as_deref(),
+        parsed_reason.as_deref(),
         Some(&duration_label),
     );
     if let Some(case_label) = case_label {

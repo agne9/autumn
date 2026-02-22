@@ -82,11 +82,14 @@ pub fn format_compact_duration(total_seconds: u64) -> String {
     }
 
     if hours > 0 {
-        return if minutes > 0 {
-            format!("{}h {}m", hours, minutes)
-        } else {
-            format!("{}h", hours)
-        };
+        let mut parts = vec![format!("{}h", hours)];
+        if minutes > 0 {
+            parts.push(format!("{}m", minutes));
+        }
+        if seconds > 0 {
+            parts.push(format!("{}s", seconds));
+        }
+        return parts.join(" ");
     }
 
     if minutes > 0 {
@@ -155,6 +158,8 @@ mod tests {
         assert_eq!(format_compact_duration(61), "1m 1s");
         assert_eq!(format_compact_duration(3600), "1h");
         assert_eq!(format_compact_duration(3660), "1h 1m");
+        assert_eq!(format_compact_duration(3670), "1h 1m 10s");
+        assert_eq!(format_compact_duration(3605), "1h 5s");
         assert_eq!(format_compact_duration(86400), "1d");
         assert_eq!(format_compact_duration(90000), "1d 1h");
     }

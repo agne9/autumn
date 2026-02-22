@@ -4,7 +4,10 @@ use poise::serenity_prelude as serenity;
 
 use crate::CommandMeta;
 use crate::moderation::embeds::{
-    guild_only_message, moderation_action_embed, target_profile_from_user, usage_message,
+    guild_only_message, is_missing_permissions_error, moderation_action_embed,
+    moderation_bot_target_message,
+    send_moderation_target_dm_for_guild,
+    target_profile_from_user, usage_message,
 };
 use crate::moderation::logging::create_case_and_publish;
 use autumn_core::{Context, Error};
@@ -45,11 +48,38 @@ pub async fn untimeout(
         return Ok(());
     };
 
+    if user.bot {
+        ctx.say(moderation_bot_target_message()).await?;
+        return Ok(());
+    }
+
+    let member = match guild_id.member(ctx.http(), user.id).await {
+        Ok(member) => member,
+        Err(source) => {
+            error!(?source, "failed to fetch member before untimeout");
+            ctx.say("I couldn't find that member in this server.").await?;
+            return Ok(());
+        }
+    };
+
+    let now = serenity::Timestamp::now().unix_timestamp();
+    let is_timed_out = member
+        .communication_disabled_until
+        .map(|until| until.unix_timestamp() > now)
+        .unwrap_or(false);
+
+    if !is_timed_out {
+        ctx.say("That user is not currently timed out.").await?;
+        return Ok(());
+    }
+
     let edit = serenity::EditMember::new().enable_communication();
     let untimeout_result = guild_id.edit_member(ctx.http(), user.id, edit).await;
 
     if let Err(source) = untimeout_result {
-        error!(?source, "untimeout request failed");
+        if !is_missing_permissions_error(&source) {
+            error!(?source, "untimeout request failed");
+        }
         ctx.say("I couldn't remove timeout from that user. Check permissions.")
             .await?;
         return Ok(());
@@ -59,6 +89,17 @@ pub async fn untimeout(
         .as_deref()
         .unwrap_or("No reason provided")
         .to_owned();
+
+    let _ = send_moderation_target_dm_for_guild(
+        ctx.http(),
+        &user,
+        guild_id,
+        "untimed out",
+        Some(&case_reason),
+        None,
+    )
+    .await;
+
     let case_label = create_case_and_publish(
         &ctx,
         guild_id,

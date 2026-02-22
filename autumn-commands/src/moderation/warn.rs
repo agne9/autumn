@@ -2,7 +2,8 @@ use poise::serenity_prelude as serenity;
 
 use crate::CommandMeta;
 use crate::moderation::embeds::{
-    guild_only_message, moderation_action_embed, target_profile_from_user, usage_message,
+    guild_only_message, moderation_action_embed, moderation_bot_target_message,
+    send_moderation_target_dm_for_guild, target_profile_from_user, usage_message,
 };
 use crate::moderation::logging::create_case_and_publish;
 use autumn_core::{Context, Error};
@@ -44,6 +45,11 @@ pub async fn warn(
         return Ok(());
     };
 
+    if user.bot {
+        ctx.say(moderation_bot_target_message()).await?;
+        return Ok(());
+    }
+
     let reason = reason.unwrap_or_else(|| "No reason provided".to_owned());
     record_warning(
         &ctx.data().db,
@@ -53,6 +59,16 @@ pub async fn warn(
         &reason,
     )
     .await?;
+
+    let _ = send_moderation_target_dm_for_guild(
+        ctx.http(),
+        &user,
+        guild_id,
+        "warned",
+        Some(&reason),
+        None,
+    )
+    .await;
 
     let case_label = create_case_and_publish(
         &ctx,

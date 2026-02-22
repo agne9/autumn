@@ -4,6 +4,7 @@ use tracing::error;
 use poise::serenity_prelude as serenity;
 
 use crate::CommandMeta;
+use crate::moderation::embeds::is_missing_permissions_error;
 use crate::moderation::logging::create_case_and_publish;
 use autumn_core::{Context, Error};
 use autumn_database::impls::cases::NewCase;
@@ -74,7 +75,9 @@ pub async fn purge(
     };
 
     if let Err(source) = delete_result {
-        error!(?source, "purge delete request failed");
+        if !is_missing_permissions_error(&source) {
+            error!(?source, "purge delete request failed");
+        }
         ctx.say("I couldn't delete messages. I likely need the 'Manage Messages' permission.")
             .await?;
         return Ok(());

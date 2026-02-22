@@ -5,22 +5,52 @@ pub fn parse_duration_seconds(raw: &str) -> Option<u64> {
         return None;
     }
 
-    let mut chars = value.chars();
-    let unit = chars.next_back();
-
-    let (number_raw, multiplier) = match unit {
-        Some('s') | Some('S') => (chars.as_str(), 1_u64),
-        Some('m') | Some('M') => (chars.as_str(), 60_u64),
-        Some('h') | Some('H') => (chars.as_str(), 60_u64 * 60),
-        Some('d') | Some('D') => (chars.as_str(), 60_u64 * 60 * 24),
-        Some(last) if last.is_ascii_digit() => (value, 1_u64),
-        _ => return None,
-    };
-
-    let number = number_raw.parse::<u64>().ok()?;
-    if number == 0 {
+    let compact: String = value.chars().filter(|ch| !ch.is_whitespace()).collect();
+    if compact.is_empty() {
         return None;
     }
 
-    number.checked_mul(multiplier)
+    let bytes = compact.as_bytes();
+    let mut cursor = 0;
+    let mut total_seconds = 0_u64;
+
+    while cursor < bytes.len() {
+        let number_start = cursor;
+        while cursor < bytes.len() && bytes[cursor].is_ascii_digit() {
+            cursor += 1;
+        }
+
+        if number_start == cursor {
+            return None;
+        }
+
+        let number = compact[number_start..cursor].parse::<u64>().ok()?;
+        if number == 0 {
+            return None;
+        }
+
+        let multiplier = if cursor < bytes.len() {
+            let unit = bytes[cursor] as char;
+            cursor += 1;
+
+            match unit {
+                's' | 'S' => 1_u64,
+                'm' | 'M' => 60_u64,
+                'h' | 'H' => 60_u64 * 60,
+                'd' | 'D' => 60_u64 * 60 * 24,
+                _ => return None,
+            }
+        } else {
+            1_u64
+        };
+
+        let part_seconds = number.checked_mul(multiplier)?;
+        total_seconds = total_seconds.checked_add(part_seconds)?;
+    }
+
+    if total_seconds == 0 {
+        None
+    } else {
+        Some(total_seconds)
+    }
 }
