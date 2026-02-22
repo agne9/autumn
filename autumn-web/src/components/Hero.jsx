@@ -59,14 +59,14 @@ export default function Hero() {
                 </div>
 
                 <div className="bg-[#0A0A0A] border border-white/10 rounded-lg p-1 relative group hover:border-accent/50 transition-colors">
-                    <div className="flex items-center justify-between bg-[#121212] rounded py-4 px-6">
-                        <code className="font-mono text-sm md:text-base text-background/90 group-hover:text-white transition-colors">
-                            <span className="text-accent inline-block mr-3 select-none">$</span>
+                    <div className="flex items-center justify-between bg-[#121212] rounded py-4 px-4 md:px-6 gap-4">
+                        <code className="font-mono text-xs sm:text-sm md:text-base text-background/90 group-hover:text-white transition-colors overflow-x-auto whitespace-nowrap scrollbar-hide">
+                            <span className="text-accent inline-block mr-2 md:mr-3 select-none">$</span>
                             git clone https://github.com/agne9/autumn.git
                         </code>
                         <button
                             onClick={handleCopy}
-                            className="bg-[#1A1A1A] hover:bg-[#252525] p-2 rounded transition-colors text-background/50 hover:text-accent"
+                            className="shrink-0 bg-[#1A1A1A] hover:bg-[#252525] p-2 rounded transition-colors text-background/50 hover:text-accent"
                             title="Copy to clipboard"
                         >
                             {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}

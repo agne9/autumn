@@ -45,7 +45,7 @@ export default function Philosophy() {
                     </div>
 
                     <div className="p-6 overflow-x-auto">
-                        <pre className="font-mono text-xs md:text-sm leading-relaxed">
+                        <pre className="font-mono text-xs md:text-sm leading-relaxed whitespace-pre-wrap break-words">
                             <span className="text-[#ff5f56] block">- Most bots try to do everything (economy, leveling, music).</span>
                             <span className="text-[#ff5f56] block">- They are closed source and monetize community management.</span>
                             <span className="text-[#ff5f56] block">- Hosted on mystery servers with unknown uptime.</span>
