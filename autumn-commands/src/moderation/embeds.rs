@@ -38,12 +38,12 @@ pub fn moderation_action_embed(
 
     let description = match duration {
         Some(duration) => format!(
-            "**Reason :** {}\n**Target :** <@{}>\n**Duration :** {}",
-            reason,
+            "**Target :** <@{}>\n**Reason :** {}\n**Duration :** {}",
             target_user_id.get(),
+            reason,
             duration
         ),
-        None => format!("**Reason :** {}\n**Target :** <@{}>", reason, target_user_id.get()),
+        None => format!("**Target :** <@{}>\n**Reason :** {}", target_user_id.get(), reason),
     };
 
     let mut embed = serenity::CreateEmbed::new()

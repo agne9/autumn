@@ -49,24 +49,25 @@ async fn publish_case_to_modlog_channel(
 
     let action_name = action_display_name(&case.action);
     let mut fields = Vec::new();
-    fields.push(format!("Action : {}", action_name));
+    fields.push(format!("**Action :** {}", action_name));
 
     if let Some(target_user_id) = case.target_user_id {
-        fields.push(format!("Target : <@{}>", target_user_id));
+        fields.push(format!("**Target :** <@{}>", target_user_id));
     }
 
-    fields.push(format!("Reason : {}", case.reason.replace('@', "@\u{200B}")));
-    fields.push(format!("Moderator : <@{}>", case.moderator_user_id));
+    fields.push(format!("**Reason :** {}", case.reason.replace('@', "@\u{200B}")));
 
     if let Some(duration_seconds) = case.duration_seconds {
         fields.push(format!(
-            "Duration : {}",
+            "**Duration :** {}",
             format_compact_duration(duration_seconds)
         ));
     }
 
+    fields.push(format!("**Moderator :** <@{}>", case.moderator_user_id));
+
     fields.push(format!(
-        "When : <t:{}:R> • <t:{}:f>",
+        "**When :** <t:{}:R> • <t:{}:f>",
         case.created_at, case.created_at,
     ));
 
