@@ -87,10 +87,10 @@ export default function Protocol() {
                     className="h-screen w-full flex items-center justify-center sticky top-0 overflow-hidden bg-primary"
                     style={{ zIndex: index }}
                 >
-                    <div className="protocol-card-inner h-[390px] md:h-[330px] w-[90vw] max-w-4xl bg-[#0A0A0A] rounded-lg border border-[#333] flex flex-col md:flex-row shadow-[0_0_30px_rgba(0,0,0,0.8)] overflow-hidden">
+                    <div className="protocol-card-inner h-auto md:h-[330px] w-[90vw] max-w-4xl bg-[#0A0A0A] rounded-lg border border-[#333] flex flex-col md:flex-row shadow-[0_0_30px_rgba(0,0,0,0.8)] overflow-hidden">
 
-                        {/* Terminal Window Decoration */}
-                        <div className="absolute top-0 left-0 w-full h-8 bg-[#151515] border-b border-[#333] px-4 flex items-center gap-2 md:hidden">
+                        {/* Terminal Window Decoration (mobile) */}
+                        <div className="w-full h-8 bg-[#151515] border-b border-[#333] px-4 flex items-center gap-2 md:hidden shrink-0">
                             <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]"></div>
                             <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
                             <div className="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
@@ -98,7 +98,7 @@ export default function Protocol() {
                         </div>
 
                         {/* Content Panel */}
-                        <div className="flex-1 md:basis-1/2 flex flex-col justify-center p-8 md:p-16 pt-16 md:pt-16 border-b md:border-b-0 md:border-r border-[#333] bg-[#0E0E0E] overflow-y-auto">
+                        <div className="flex-1 md:basis-1/2 flex flex-col justify-center p-8 md:p-16 pt-8 md:pt-16 border-b md:border-b-0 md:border-r border-[#333] bg-[#0E0E0E]">
                             <span className="font-mono text-sm text-accent mb-4 font-bold">[{step.num}]</span>
                             <h3 className="font-sans font-medium text-2xl md:text-3xl text-background mb-4">
                                 {step.title}
@@ -117,7 +117,7 @@ export default function Protocol() {
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
                                 <span className="font-mono text-[10px] text-background/40 ml-2">step_0{index + 1}.sh</span>
                             </div>
-                            <div className="p-8 flex-1 flex items-center overflow-auto">
+                            <div className="p-8 flex-1 flex items-center">
                                 <step.Animation />
                             </div>
                         </div>

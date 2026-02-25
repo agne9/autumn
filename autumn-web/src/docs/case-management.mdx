@@ -74,3 +74,22 @@ Adds, lists, or clears moderator notes for a user.
 !notes @user Keep an eye on repeated low-effort spam
 !notes @user clear
 ```
+
+---
+
+## `!userlogs`
+Shows recent user message activity logs (edits/deletes/attachment deletes).
+
+**Usage:**
+```bash
+!userlogs [target_user] [event]
+```
+
+**Permission required:** `Manage Messages`
+
+**Event filter examples:**
+```bash
+!userlogs @user message_edit
+!userlogs @user message_delete
+!userlogs @user attachment_delete
+```

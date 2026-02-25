@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
-import { Github, Terminal, Menu, X } from 'lucide-react';
+import { Github, Menu, X } from 'lucide-react';
 
 export default function Navbar() {
     const navRef = useRef(null);
@@ -31,7 +31,7 @@ export default function Navbar() {
         >
             <div className="flex items-center justify-between px-6 py-4">
                 <Link to="/" className="flex items-center gap-2 group" onClick={() => setIsOpen(false)}>
-                    <Terminal className="w-5 h-5 text-accent transition-transform group-hover:scale-110" />
+                    <img src="/autumn.png" alt="Autumn" className="w-5 h-5 transition-transform group-hover:scale-110" />
                     <span className="font-sans font-bold text-lg tracking-tight text-background">Autumn</span>
                 </Link>
 

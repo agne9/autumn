@@ -31,6 +31,31 @@ If no modlog channel is configured, moderation actions still work; they just won
 
 ---
 
+## `!userlogchannel`
+Set, view, or clear the channel used for user message activity logs.
+
+**Usage:**
+```bash
+!userlogchannel [#channel|channel_id|clear]
+```
+
+**Permission required:** `Manage Server`
+
+**Examples:**
+```bash
+!userlogchannel #user-logs
+!userlogchannel 123456789012345678
+!userlogchannel clear
+!userlogchannel
+```
+
+**What it tracks once configured:**
+- Message edits
+- Message deletions
+- Attachment/image deletions
+
+---
+
 ## `!aitoggle`
 Enable or disable AI mention replies for the current server.
 

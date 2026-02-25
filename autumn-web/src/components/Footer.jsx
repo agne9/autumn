@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Terminal } from 'lucide-react';
 
 export default function Footer() {
     return (
@@ -8,7 +7,7 @@ export default function Footer() {
             <div className="max-w-5xl mx-auto flex flex-col items-center">
 
                 <div className="flex items-center justify-center gap-3 mb-10 group cursor-default">
-                    <Terminal className="w-6 h-6 text-accent" />
+                    <img src="/autumn.png" alt="Autumn" className="w-6 h-6" />
                     <h2 className="font-mono font-bold text-xl text-background tracking-wide">Autumn</h2>
                 </div>
 
