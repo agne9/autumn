@@ -62,10 +62,21 @@ async fn publish_case_to_modlog_channel(
         fields.push(format!("**Target :** <@{}>", target_user_id));
     }
 
-    fields.push(format!(
-        "**Reason :** {}",
-        case.reason.replace('@', "@\u{200B}")
-    ));
+    // Skip reason for purge actions (they never have a meaningful reason).
+    // For word filter actions, show "Violation" instead of "Reason".
+    let is_word_filter = case.action.starts_with("word_filter_");
+    if case.action != "purge" {
+        let label = if is_word_filter {
+            "Violation"
+        } else {
+            "Reason"
+        };
+        fields.push(format!(
+            "**{} :** {}",
+            label,
+            case.reason.replace('@', "@\u{200B}")
+        ));
+    }
 
     if let Some(duration_seconds) = case.duration_seconds {
         fields.push(format!(
@@ -74,9 +85,12 @@ async fn publish_case_to_modlog_channel(
         ));
     }
 
+    // Blank line separator before metadata section.
+    fields.push(String::new());
+
     fields.push(format!("**Moderator :** <@{}>", case.moderator_user_id));
 
-    fields.push(format!("**Date :** <t:{}:R>", case.created_at));
+    fields.push(format!("**When :** <t:{}:R>", case.created_at));
 
     let title = if let Some(target_user_id) = case.target_user_id {
         let target_profile =

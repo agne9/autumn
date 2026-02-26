@@ -7,3 +7,4 @@ pub mod notes;
 pub mod user_logs;
 pub mod userlog_config;
 pub mod warnings;
+pub mod word_filter;

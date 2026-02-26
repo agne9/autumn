@@ -144,6 +144,7 @@ dependencies = [
  "autumn-database",
  "autumn-llm",
  "poise",
+ "tokio",
 ]
 
 [[package]]

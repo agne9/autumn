@@ -100,7 +100,11 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .await?;
 
-                Ok(Data { db, llm })
+                Ok(Data {
+                    db,
+                    llm,
+                    suppressed_deletes: Default::default(),
+                })
             })
         })
         .build();
@@ -139,6 +143,16 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
                 .send(poise::CreateReply::default().ephemeral(true).embed(embed))
                 .await;
         }
+        poise::FrameworkError::ArgumentParse { ctx, input, .. } => {
+            let usage = format!("Usage: `!{}`", ctx.command().qualified_name);
+            let description = if let Some(input) = input {
+                format!("Invalid argument: `{}`\n{}", input, usage)
+            } else {
+                format!("Missing required argument.\n{}", usage)
+            };
+
+            let _ = ctx.say(description).await;
+        }
         poise::FrameworkError::UnknownCommand { .. } => {
             debug!("unknown command invocation");
         }
@@ -156,6 +170,7 @@ async fn handle_event(
 ) -> Result<(), Error> {
     match event {
         serenity::FullEvent::Message { new_message } => {
+            events::word_filter::handle_message_word_filter(ctx, data, new_message).await;
             events::userlog::handle_message_create_userlog(data, new_message).await;
             events::llm_events::handle_message_mention_llm(ctx, data, new_message).await?;
         }

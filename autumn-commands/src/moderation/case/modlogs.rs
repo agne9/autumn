@@ -87,10 +87,18 @@ pub async fn modlogs(
                 fields.push(format!("**Target :** <@{}>", target_user_id));
             }
 
-            fields.push(format!(
-                "**Reason :** {}",
-                case.reason.replace('@', "@\u{200B}")
-            ));
+            // Use "Violation" label for word filter cases, skip for purge.
+            if case.action.starts_with("word_filter_") {
+                fields.push(format!(
+                    "**Violation :** {}",
+                    case.reason.replace('@', "@\u{200B}")
+                ));
+            } else if case.action != "purge" {
+                fields.push(format!(
+                    "**Reason :** {}",
+                    case.reason.replace('@', "@\u{200B}")
+                ));
+            }
 
             if let Some(duration_seconds) = case.duration_seconds {
                 fields.push(format!(

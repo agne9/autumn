@@ -152,6 +152,22 @@ pub async fn handle_message_delete_userlog(
     channel_id: serenity::ChannelId,
     message_id: serenity::MessageId,
 ) {
+    // Skip messages suppressed by purge or word filter.
+    {
+        let mut suppressed = data.suppressed_deletes.write().await;
+        if suppressed.remove(&message_id.get()) {
+            // Also clean up the snapshot so it doesn't linger.
+            let _ = delete_message_snapshot(
+                &data.db,
+                guild_id.get(),
+                channel_id.get(),
+                message_id.get(),
+            )
+            .await;
+            return;
+        }
+    }
+
     let snapshot =
         match get_message_snapshot(&data.db, guild_id.get(), channel_id.get(), message_id.get())
             .await

@@ -68,6 +68,14 @@ pub async fn purge(
         return Ok(());
     }
 
+    // Suppress these message IDs from user-log recording.
+    {
+        let mut suppressed = ctx.data().suppressed_deletes.write().await;
+        for id in &ids {
+            suppressed.insert(id.get());
+        }
+    }
+
     let delete_result = if ids.len() == 1 {
         channel_id.delete_message(ctx.http(), ids[0]).await
     } else {

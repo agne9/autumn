@@ -575,6 +575,9 @@ fn action_code(action: &str) -> &'static str {
         "unwarn_all" => "UWA",
         "purge" => "P",
         "terminate" => "TR",
+        "word_filter_timeout" | "word_filter_delete" | "word_filter_log" | "word_filter_warn" => {
+            "WF"
+        }
         _ => "M",
     }
 }
