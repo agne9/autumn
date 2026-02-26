@@ -4,7 +4,7 @@ use crate::utility::embeds::{
 };
 use crate::{COMMANDS, CommandMeta};
 use autumn_core::{Context, Error};
-use autumn_utils::pagination::paginate_embed_pages;
+use autumn_utils::pagination::{page_window, paginate_embed_pages, total_pages};
 use autumn_utils::permissions::has_user_permission;
 use poise::serenity_prelude as serenity;
 
@@ -89,20 +89,6 @@ pub async fn help(
         .collect::<Vec<_>>();
     paginate_embed_pages(ctx, "Available Commands", &pages, requested_page).await?;
     Ok(())
-}
-
-fn total_pages(total_items: usize, per_page: usize) -> usize {
-    let per_page = per_page.max(1);
-    let pages = total_items.div_ceil(per_page);
-    pages.max(1)
-}
-
-fn page_window(total_items: usize, per_page: usize, page: usize) -> (usize, usize) {
-    let per_page = per_page.max(1);
-    let page = page.max(1);
-    let start = (page - 1).saturating_mul(per_page).min(total_items);
-    let end = (start + per_page).min(total_items);
-    (start, end)
 }
 
 fn sorted_commands(category: Option<&str>) -> Vec<&'static CommandMeta> {

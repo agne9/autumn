@@ -13,7 +13,6 @@ use rustls::crypto::ring::default_provider;
 use sqlx::postgres::PgPoolOptions;
 
 use autumn_core::{Data, Error};
-use autumn_database::impls::cases::ensure_case_schema_compat;
 use autumn_database::{Database, MIGRATOR};
 use autumn_llm::LlmService;
 
@@ -62,9 +61,6 @@ async fn main() -> anyhow::Result<()> {
     if auto_run_migrations {
         MIGRATOR.run(db.pool()).await?;
         info!("Database migrations applied.");
-
-        ensure_case_schema_compat(&db).await?;
-        info!("Case schema compatibility checks applied.");
     } else {
         info!("Auto migrations disabled (set AUTO_RUN_MIGRATIONS=true to run at startup).");
     }

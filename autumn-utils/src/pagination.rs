@@ -6,6 +6,23 @@ use crate::embed::DEFAULT_EMBED_COLOR;
 
 pub const PAGINATION_TIMEOUT_SECS: u64 = 60 * 3;
 
+/// Compute the total number of pages for a list of items.
+pub fn total_pages(total_items: usize, per_page: usize) -> usize {
+    let per_page = per_page.max(1);
+    let pages = total_items.div_ceil(per_page);
+    pages.max(1)
+}
+
+/// Compute the `[start, end)` item-index window for a given page (1-indexed).
+pub fn page_window(total_items: usize, per_page: usize, page: usize) -> (usize, usize) {
+    let per_page = per_page.max(1);
+    let page = page.max(1);
+    let start = (page - 1).saturating_mul(per_page).min(total_items);
+    let end = (start + per_page).min(total_items);
+    (start, end)
+}
+
+
 fn build_page_embed(
     title: &str,
     description: &str,
