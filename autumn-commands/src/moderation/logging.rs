@@ -2,12 +2,15 @@ use tracing::error;
 
 use poise::serenity_prelude as serenity;
 
+use crate::moderation::embeds::fetch_target_profile;
 use autumn_core::Context;
 use autumn_database::impls::cases::{NewCase, create_case};
 use autumn_database::impls::modlog_config::get_modlog_channel_id;
 use autumn_database::model::cases::CaseSummary;
 use autumn_utils::embed::DEFAULT_EMBED_COLOR;
-use autumn_utils::formatting::{action_display_name, format_case_label, format_compact_duration};
+use autumn_utils::formatting::{
+    action_display_name, action_past_tense, format_case_label, format_compact_duration,
+};
 
 /// Orchestrator: create moderation case and publish to optional modlog channel.
 pub async fn create_case_and_publish(
@@ -51,8 +54,9 @@ async fn publish_case_to_modlog_channel(
     };
 
     let action_name = action_display_name(&case.action);
+    let case_label = format_case_label(&case.case_code, case.action_case_number);
+    let action_past = action_past_tense(&case.action);
     let mut fields = Vec::new();
-    fields.push(format!("**Action :** {}", action_name));
 
     if let Some(target_user_id) = case.target_user_id {
         fields.push(format!("**Target :** <@{}>", target_user_id));
@@ -72,20 +76,35 @@ async fn publish_case_to_modlog_channel(
 
     fields.push(format!("**Moderator :** <@{}>", case.moderator_user_id));
 
-    fields.push(format!(
-        "**When :** <t:{}:R> • <t:{}:f>",
-        case.created_at, case.created_at,
-    ));
+    fields.push(format!("**Date :** <t:{}:R>", case.created_at));
+
+    let title = if let Some(target_user_id) = case.target_user_id {
+        let target_profile =
+            fetch_target_profile(ctx.http(), serenity::UserId::new(target_user_id)).await;
+        format!(
+            "{} has been {} - #{}",
+            target_profile.display_name, action_past, case_label
+        )
+    } else {
+        format!("{} - #{}", action_name, case_label)
+    };
 
     let description = fields.join("\n");
 
-    let embed = serenity::CreateEmbed::new()
+    let mut embed = serenity::CreateEmbed::new()
         .color(DEFAULT_EMBED_COLOR)
-        .title(format!(
-            "#{}",
-            format_case_label(&case.case_code, case.action_case_number)
-        ))
+        .title(title)
         .description(description);
+
+    if let Some(target_user_id) = case.target_user_id {
+        let target_profile =
+            fetch_target_profile(ctx.http(), serenity::UserId::new(target_user_id)).await;
+        if let Some(url) = target_profile.avatar_url {
+            embed = embed.author(
+                serenity::CreateEmbedAuthor::new(target_profile.display_name).icon_url(url),
+            );
+        }
+    }
 
     serenity::ChannelId::new(channel_id)
         .send_message(ctx.http(), serenity::CreateMessage::new().embed(embed))

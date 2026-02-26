@@ -7,8 +7,8 @@ mod core_group;
 #[path = "reversals/mod.rs"]
 mod reversals_group;
 
-pub use case_group::{case, modlogs, notes, warnings};
-pub use config_group::{aitoggle, modlogchannel, permissions};
+pub use case_group::{case, modlogs, notes, userlogs, warnings};
+pub use config_group::{aitoggle, modlogchannel, permissions, userlogchannel};
 pub use core_group::{ban, kick, purge, terminate, timeout, warn};
 pub use reversals_group::{unban, untimeout, unwarn};
 

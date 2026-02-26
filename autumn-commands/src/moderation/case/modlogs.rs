@@ -101,10 +101,7 @@ pub async fn modlogs(
 
             fields.push(format!("**Moderator :** <@{}>", case.moderator_user_id));
 
-            fields.push(format!(
-                "**When :** <t:{}:R> • <t:{}:f>",
-                case.created_at, case.created_at,
-            ));
+            fields.push(format!("**When :** <t:{}:R>", case.created_at));
 
             body.push_str(&format!(
                 "#{}\n{}\n\n",

@@ -30,6 +30,8 @@ pub const COMMANDS: &[CommandMeta] = &[
     moderation::terminate::META,
     moderation::modlogs::META,
     moderation::modlogchannel::META,
+    moderation::userlogs::META,
+    moderation::userlogchannel::META,
     moderation::case::META,
     moderation::notes::META,
 ];
@@ -55,6 +57,8 @@ pub fn commands() -> Vec<poise::Command<Data, Error>> {
         moderation::terminate::terminate(),
         moderation::modlogs::modlogs(),
         moderation::modlogchannel::modlogchannel(),
+        moderation::userlogs::userlogs(),
+        moderation::userlogchannel::userlogchannel(),
         moderation::case::case(),
         moderation::notes::notes(),
     ]

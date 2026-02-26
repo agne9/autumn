@@ -46,10 +46,11 @@ fn required_permissions_for_command(command_name: &str) -> Option<serenity::Perm
         "ban" | "unban" => Some(serenity::Permissions::BAN_MEMBERS),
         "kick" => Some(serenity::Permissions::KICK_MEMBERS),
         "timeout" | "untimeout" => Some(serenity::Permissions::MODERATE_MEMBERS),
-        "warn" | "warnings" | "unwarn" | "purge" | "permissions" | "modlogs" | "case" | "notes" => {
-            Some(serenity::Permissions::MANAGE_MESSAGES)
+        "warn" | "warnings" | "unwarn" | "purge" | "permissions" | "modlogs" | "userlogs"
+        | "case" | "notes" => Some(serenity::Permissions::MANAGE_MESSAGES),
+        "modlogchannel" | "userlogchannel" | "aitoggle" => {
+            Some(serenity::Permissions::MANAGE_GUILD)
         }
-        "modlogchannel" | "aitoggle" => Some(serenity::Permissions::MANAGE_GUILD),
         "terminate" => {
             Some(serenity::Permissions::BAN_MEMBERS | serenity::Permissions::MANAGE_MESSAGES)
         }

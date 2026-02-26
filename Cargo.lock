@@ -113,6 +113,7 @@ dependencies = [
  "autumn-utils",
  "dotenvy",
  "poise",
+ "reqwest",
  "rustls 0.23.36",
  "serenity",
  "sqlx",

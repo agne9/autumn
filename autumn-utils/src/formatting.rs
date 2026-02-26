@@ -45,6 +45,23 @@ pub fn action_display_name(action: &str) -> String {
     }
 }
 
+/// Convert internal action identifiers to past-tense verbs for embed titles.
+pub fn action_past_tense(action: &str) -> String {
+    match action {
+        "warn" => "warned".to_owned(),
+        "ban" => "banned".to_owned(),
+        "kick" => "kicked".to_owned(),
+        "timeout" => "timed out".to_owned(),
+        "unban" => "unbanned".to_owned(),
+        "untimeout" => "untimeouted".to_owned(),
+        "unwarn" => "unwarned".to_owned(),
+        "unwarn_all" => "had all warnings cleared".to_owned(),
+        "purge" => "purged".to_owned(),
+        "terminate" => "terminated".to_owned(),
+        other => format!("{}ed", other),
+    }
+}
+
 /// Parse a case label like "WARN5" into ("WARN", 5).
 pub fn parse_case_label(raw: &str) -> Option<(String, u64)> {
     let input = raw.trim();

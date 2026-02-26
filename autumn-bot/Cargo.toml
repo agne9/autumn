@@ -11,6 +11,7 @@ sqlx = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+reqwest = { workspace = true }
 poise = { workspace = true }
 serenity = { workspace = true }
 autumn-llm = { workspace = true }
