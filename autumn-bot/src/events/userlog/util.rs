@@ -1,8 +1,7 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use poise::serenity_prelude as serenity;
 
 use autumn_core::Data;
+pub use autumn_utils::time::now_unix_secs;
 
 /// Builds the `filename (url)\nfilename2 (url2)` summary from message attachments.
 pub fn attachment_summary_from_message(message: &serenity::Message) -> Option<String> {
@@ -34,12 +33,6 @@ pub fn truncate_for_embed(value: &str, max_len: usize) -> String {
     }
     output.push('…');
     output
-}
-
-pub fn now_unix_secs() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |duration| duration.as_secs())
 }
 
 /// Looks up the audit log to determine who deleted a message (if it wasn't the author).

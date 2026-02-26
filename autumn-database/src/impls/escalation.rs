@@ -189,7 +189,7 @@ pub async fn count_timeouts_in_window(
     let since = now_unix_secs() - window_seconds;
 
     let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM moderation_cases \
+        "SELECT COUNT(*) FROM mod_cases \
          WHERE guild_id = $1 AND target_user_id = $2 AND created_at >= $3 \
          AND action IN ('timeout', 'auto_timeout', 'word_filter_timeout')",
     )
