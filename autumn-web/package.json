@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "vite build && cp dist/index.html dist/404.html",
     "preview": "vite preview",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "predeploy": "npx gh-pages-clean && npm run build",
+    "deploy": "gh-pages -d dist --no-history"
   },
   "keywords": [],
   "author": "",

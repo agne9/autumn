@@ -92,16 +92,16 @@ export default function DocsLayout({ activePage, headingLevels = 'h1, h2, h3', g
     }, [scrollIntoViewOffset]);
 
     useEffect(() => {
-        if (hash) {
+        if (hash && tocEntries.length > 0) {
             const targetId = hash.replace('#', '');
             const element = document.getElementById(targetId);
             if (element) {
-                setTimeout(() => scrollIntoViewOffset(element), 100);
+                setTimeout(() => scrollIntoViewOffset(element), 50);
             }
-        } else {
+        } else if (!hash) {
             window.scrollTo(0, 0);
         }
-    }, [hash]);
+    }, [hash, tocEntries]);
 
     // Group TOC: h1 entries are parents, h2/h3 are children (when groupByH1 is set)
     const tocGroups = (() => {
