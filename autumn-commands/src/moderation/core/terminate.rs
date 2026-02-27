@@ -235,7 +235,7 @@ pub async fn terminate(
 
     let case_reason = reason.as_deref().unwrap_or("No reason provided").to_owned();
 
-    let case_label = create_case_and_publish(
+    let _case_label = create_case_and_publish(
         &ctx,
         guild_id,
         NewCase {
@@ -250,18 +250,13 @@ pub async fn terminate(
     )
     .await;
 
-    let mut final_embed = moderation_action_embed(
+    let final_embed = moderation_action_embed(
         &target_profile,
         user.id,
         "terminated",
         reason.as_deref(),
         None,
     );
-
-    if let Some(case_label) = case_label {
-        final_embed =
-            final_embed.footer(serenity::CreateEmbedFooter::new(format!("#{}", case_label)));
-    }
 
     interaction
         .edit_response(

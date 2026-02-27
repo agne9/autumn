@@ -73,7 +73,7 @@ pub async fn warn(
     )
     .await;
 
-    let case_label = create_case_and_publish(
+    let _case_label = create_case_and_publish(
         &ctx,
         guild_id,
         NewCase {
@@ -90,10 +90,7 @@ pub async fn warn(
 
     let action = "warned";
     let target_profile = target_profile_from_user(&user);
-    let mut embed = moderation_action_embed(&target_profile, user.id, action, Some(&reason), None);
-    if let Some(case_label) = case_label {
-        embed = embed.footer(serenity::CreateEmbedFooter::new(format!("#{}", case_label)));
-    }
+    let embed = moderation_action_embed(&target_profile, user.id, action, Some(&reason), None);
     ctx.send(poise::CreateReply::default().embed(embed)).await?;
 
     // Check for automatic escalation (warn threshold → auto-timeout).

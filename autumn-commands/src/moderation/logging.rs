@@ -92,13 +92,8 @@ async fn publish_case_to_modlog_channel(
 
     fields.push(format!("**When :** <t:{}:R>", case.created_at));
 
-    let title = if let Some(target_user_id) = case.target_user_id {
-        let target_profile =
-            fetch_target_profile(ctx.http(), serenity::UserId::new(target_user_id)).await;
-        format!(
-            "{} has been {} - #{}",
-            target_profile.display_name, action_past, case_label
-        )
+    let title = if case.target_user_id.is_some() {
+        format!("#{}", case_label)
     } else {
         format!("{} - #{}", action_name, case_label)
     };
@@ -115,8 +110,17 @@ async fn publish_case_to_modlog_channel(
             fetch_target_profile(ctx.http(), serenity::UserId::new(target_user_id)).await;
         if let Some(url) = target_profile.avatar_url {
             embed = embed.author(
-                serenity::CreateEmbedAuthor::new(target_profile.display_name).icon_url(url),
+                serenity::CreateEmbedAuthor::new(format!(
+                    "{} has been {}",
+                    target_profile.display_name, action_past
+                ))
+                .icon_url(url),
             );
+        } else {
+            embed = embed.author(serenity::CreateEmbedAuthor::new(format!(
+                "{} has been {}",
+                target_profile.display_name, action_past
+            )));
         }
     }
 

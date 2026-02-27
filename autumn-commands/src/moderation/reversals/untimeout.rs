@@ -99,7 +99,7 @@ pub async fn untimeout(
     )
     .await;
 
-    let case_label = create_case_and_publish(
+    let _case_label = create_case_and_publish(
         &ctx,
         guild_id,
         NewCase {
@@ -115,16 +115,13 @@ pub async fn untimeout(
     .await;
 
     let target_profile = target_profile_from_user(&user);
-    let mut embed = moderation_action_embed(
+    let embed = moderation_action_embed(
         &target_profile,
         user.id,
         "untimed out",
         reason.as_deref(),
         None,
     );
-    if let Some(case_label) = case_label {
-        embed = embed.footer(serenity::CreateEmbedFooter::new(format!("#{}", case_label)));
-    }
     ctx.send(poise::CreateReply::default().embed(embed)).await?;
 
     Ok(())

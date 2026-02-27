@@ -22,7 +22,6 @@ pub fn page_window(total_items: usize, per_page: usize, page: usize) -> (usize, 
     (start, end)
 }
 
-
 fn build_page_embed(
     title: &str,
     description: &str,

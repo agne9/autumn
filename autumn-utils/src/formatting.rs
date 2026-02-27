@@ -54,9 +54,9 @@ pub fn action_past_tense(action: &str) -> String {
         "kick" => "kicked".to_owned(),
         "timeout" => "timed out".to_owned(),
         "unban" => "unbanned".to_owned(),
-        "untimeout" => "untimeouted".to_owned(),
+        "untimeout" => "untimed out".to_owned(),
         "unwarn" => "unwarned".to_owned(),
-        "unwarn_all" => "had all warnings cleared".to_owned(),
+        "unwarn_all" => "unwarned all".to_owned(),
         "purge" => "purged".to_owned(),
         "terminate" => "terminated".to_owned(),
         "auto_timeout" => "automatically timed out".to_owned(),
@@ -139,8 +139,8 @@ pub fn event_display_name(event_type: &str) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        action_display_name, event_display_name, format_case_label, format_compact_duration,
-        parse_case_label,
+        action_display_name, action_past_tense, event_display_name, format_case_label,
+        format_compact_duration, parse_case_label,
     };
 
     #[test]
@@ -164,6 +164,13 @@ mod tests {
         assert_eq!(action_display_name("warn"), "Warn");
         assert_eq!(action_display_name("unwarn_all"), "Unwarn All");
         assert_eq!(action_display_name("custom_action"), "Custom Action");
+    }
+
+    #[test]
+    fn action_past_tense_phrases_fit_embed_titles() {
+        assert_eq!(action_past_tense("untimeout"), "untimed out");
+        assert_eq!(action_past_tense("unwarn"), "unwarned");
+        assert_eq!(action_past_tense("unwarn_all"), "unwarned all");
     }
 
     #[test]
