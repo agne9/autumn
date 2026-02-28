@@ -2,6 +2,8 @@ mod noop_store;
 mod redis_store;
 
 use std::future::Future;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use serde::Serialize;
@@ -21,6 +23,46 @@ enum CacheBackend {
 pub struct CacheService {
     key_prefix: String,
     backend: CacheBackend,
+    stats: Arc<CacheStatsInner>,
+}
+
+#[derive(Debug, Default)]
+struct CacheStatsInner {
+    hit: AtomicU64,
+    miss: AtomicU64,
+    set: AtomicU64,
+    del: AtomicU64,
+    error: AtomicU64,
+    fallback_load: AtomicU64,
+    ratelimit_checks: AtomicU64,
+    ratelimit_blocks: AtomicU64,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct CacheStatsSnapshot {
+    pub hit: u64,
+    pub miss: u64,
+    pub set: u64,
+    pub del: u64,
+    pub error: u64,
+    pub fallback_load: u64,
+    pub ratelimit_checks: u64,
+    pub ratelimit_blocks: u64,
+}
+
+impl CacheStatsInner {
+    fn snapshot(&self) -> CacheStatsSnapshot {
+        CacheStatsSnapshot {
+            hit: self.hit.load(Ordering::Relaxed),
+            miss: self.miss.load(Ordering::Relaxed),
+            set: self.set.load(Ordering::Relaxed),
+            del: self.del.load(Ordering::Relaxed),
+            error: self.error.load(Ordering::Relaxed),
+            fallback_load: self.fallback_load.load(Ordering::Relaxed),
+            ratelimit_checks: self.ratelimit_checks.load(Ordering::Relaxed),
+            ratelimit_blocks: self.ratelimit_blocks.load(Ordering::Relaxed),
+        }
+    }
 }
 
 pub const CONFIG_CACHE_TTL: Duration = Duration::from_secs(15 * 60);
@@ -33,6 +75,7 @@ impl CacheService {
         Self {
             key_prefix: prefix.into(),
             backend: CacheBackend::Disabled(NoopCacheStore),
+            stats: Arc::new(CacheStatsInner::default()),
         }
     }
 
@@ -40,6 +83,7 @@ impl CacheService {
         Ok(Self {
             key_prefix: prefix.into(),
             backend: CacheBackend::Redis(RedisCacheStore::from_url(redis_url)?),
+            stats: Arc::new(CacheStatsInner::default()),
         })
     }
 
@@ -54,16 +98,27 @@ impl CacheService {
         let value = match &self.backend {
             CacheBackend::Disabled(store) => store.get(key).await,
             CacheBackend::Redis(store) => store.get(key).await,
-        }?;
+        }
+        .inspect_err(|_| {
+            self.stats.error.fetch_add(1, Ordering::Relaxed);
+        })?;
 
         match value {
             Some(bytes) => {
-                let parsed = serde_json::from_slice(&bytes).map_err(|e| {
-                    anyhow::anyhow!("failed to deserialize cache value for `{key}`: {e}")
-                })?;
+                let parsed = serde_json::from_slice(&bytes)
+                    .map_err(|e| {
+                        anyhow::anyhow!("failed to deserialize cache value for `{key}`: {e}")
+                    })
+                    .inspect_err(|_| {
+                        self.stats.error.fetch_add(1, Ordering::Relaxed);
+                    })?;
+                self.stats.hit.fetch_add(1, Ordering::Relaxed);
                 Ok(Some(parsed))
             }
-            None => Ok(None),
+            None => {
+                self.stats.miss.fetch_add(1, Ordering::Relaxed);
+                Ok(None)
+            }
         }
     }
 
@@ -75,16 +130,38 @@ impl CacheService {
         let payload = serde_json::to_vec(value)
             .map_err(|e| anyhow::anyhow!("failed to serialize cache value for `{key}`: {e}"))?;
 
-        match &self.backend {
+        let result = match &self.backend {
             CacheBackend::Disabled(store) => store.set(key, payload, ttl_seconds).await,
             CacheBackend::Redis(store) => store.set(key, payload, ttl_seconds).await,
+        };
+
+        match result {
+            Ok(()) => {
+                self.stats.set.fetch_add(1, Ordering::Relaxed);
+                Ok(())
+            }
+            Err(e) => {
+                self.stats.error.fetch_add(1, Ordering::Relaxed);
+                Err(e)
+            }
         }
     }
 
     pub async fn del(&self, key: &str) -> anyhow::Result<()> {
-        match &self.backend {
+        let result = match &self.backend {
             CacheBackend::Disabled(store) => store.del(key).await,
             CacheBackend::Redis(store) => store.del(key).await,
+        };
+
+        match result {
+            Ok(()) => {
+                self.stats.del.fetch_add(1, Ordering::Relaxed);
+                Ok(())
+            }
+            Err(e) => {
+                self.stats.error.fetch_add(1, Ordering::Relaxed);
+                Err(e)
+            }
         }
     }
 
@@ -109,6 +186,8 @@ impl CacheService {
             ),
         }
 
+        self.stats.fallback_load.fetch_add(1, Ordering::Relaxed);
+
         let loaded = loader().await?;
 
         if let Err(e) = self.set_json(key, &loaded, ttl).await {
@@ -123,11 +202,39 @@ impl CacheService {
     }
 
     pub async fn increment_with_window(&self, key: &str, window: Duration) -> anyhow::Result<u64> {
+        self.stats.ratelimit_checks.fetch_add(1, Ordering::Relaxed);
         let window_seconds = window.as_secs().max(1);
-        match &self.backend {
+        let result = match &self.backend {
             CacheBackend::Disabled(store) => store.increment_with_window(key, window_seconds).await,
             CacheBackend::Redis(store) => store.increment_with_window(key, window_seconds).await,
+        };
+
+        match result {
+            Ok(value) => Ok(value),
+            Err(e) => {
+                self.stats.error.fetch_add(1, Ordering::Relaxed);
+                Err(e)
+            }
         }
+    }
+
+    pub fn record_rate_limit_block(&self) {
+        self.stats.ratelimit_blocks.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn stats_snapshot(&self) -> CacheStatsSnapshot {
+        self.stats.snapshot()
+    }
+
+    pub async fn ping(&self) -> anyhow::Result<()> {
+        match &self.backend {
+            CacheBackend::Disabled(store) => store.ping().await,
+            CacheBackend::Redis(store) => store.ping().await,
+        }
+    }
+
+    pub fn is_redis_enabled(&self) -> bool {
+        matches!(self.backend, CacheBackend::Redis(_))
     }
 }
 

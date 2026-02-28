@@ -1,6 +1,6 @@
 use sqlx::{PgPool, migrate::Migrator};
 
-use crate::cache::CacheService;
+use crate::cache::{CacheService, CacheStatsSnapshot};
 
 /// Compile-time discovered SQLx migrations for the `autumn-database` crate.
 pub static MIGRATOR: Migrator = sqlx::migrate!();
@@ -34,5 +34,9 @@ impl Database {
     /// Expose the cache service for query modules.
     pub fn cache(&self) -> &CacheService {
         &self.cache
+    }
+
+    pub fn cache_stats_snapshot(&self) -> CacheStatsSnapshot {
+        self.cache.stats_snapshot()
     }
 }

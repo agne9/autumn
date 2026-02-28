@@ -85,4 +85,25 @@ impl RedisCacheStore {
 
         Ok(count)
     }
+
+    pub async fn ping(&self) -> anyhow::Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| anyhow::anyhow!("failed to get redis connection: {e}"))?;
+
+        let response = conn
+            .ping::<String>()
+            .await
+            .map_err(|e| anyhow::anyhow!("redis PING failed: {e}"))?;
+
+        if response != "PONG" {
+            return Err(anyhow::anyhow!(
+                "unexpected redis ping response: {response}"
+            ));
+        }
+
+        Ok(())
+    }
 }

@@ -1,6 +1,7 @@
 mod events;
 
 use std::env;
+use std::time::Duration;
 
 use poise::serenity_prelude as serenity;
 use tracing::{debug, error, info, warn};
@@ -76,7 +77,41 @@ async fn main() -> anyhow::Result<()> {
         CacheService::disabled(redis_key_prefix.clone())
     };
 
+    if cache.is_redis_enabled() {
+        if let Err(err) = cache.ping().await {
+            warn!(
+                ?err,
+                "Redis cache ping failed; cache operations will continue with fallback behavior."
+            );
+        } else {
+            info!("Redis cache health check passed.");
+        }
+    }
+
     let db = Database::with_cache(db_pool, cache);
+
+    {
+        let metrics_db = db.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(60));
+            loop {
+                interval.tick().await;
+                let stats = metrics_db.cache_stats_snapshot();
+                info!(
+                    cache_hit = stats.hit,
+                    cache_miss = stats.miss,
+                    cache_set = stats.set,
+                    cache_del = stats.del,
+                    cache_error = stats.error,
+                    cache_fallback_load = stats.fallback_load,
+                    ratelimit_checks = stats.ratelimit_checks,
+                    ratelimit_blocks = stats.ratelimit_blocks,
+                    "cache stats"
+                );
+            }
+        });
+    }
+
     let llm = LlmService::from_env_optional()?;
     if llm.is_some() {
         info!("LLM integration enabled.");

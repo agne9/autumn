@@ -21,4 +21,8 @@ impl NoopCacheStore {
     ) -> anyhow::Result<u64> {
         Ok(1)
     }
+
+    pub async fn ping(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
 }

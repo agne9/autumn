@@ -15,5 +15,9 @@ pub async fn llm_mention_within_limit(
         .increment_with_window(&key, LLM_MENTION_RATE_LIMIT_WINDOW)
         .await?;
 
+    if count > LLM_MENTION_RATE_LIMIT_MAX_HITS {
+        cache.record_rate_limit_block();
+    }
+
     Ok(count <= LLM_MENTION_RATE_LIMIT_MAX_HITS)
 }
