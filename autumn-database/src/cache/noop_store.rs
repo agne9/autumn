@@ -13,4 +13,12 @@ impl NoopCacheStore {
     pub async fn del(&self, _key: &str) -> anyhow::Result<()> {
         Ok(())
     }
+
+    pub async fn increment_with_window(
+        &self,
+        _key: &str,
+        _window_seconds: u64,
+    ) -> anyhow::Result<u64> {
+        Ok(1)
+    }
 }

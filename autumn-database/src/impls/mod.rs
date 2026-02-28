@@ -5,6 +5,7 @@ pub mod leveling;
 pub mod llm_chat;
 pub mod modlog_config;
 pub mod notes;
+pub mod rate_limit;
 pub mod user_logs;
 pub mod userlog_config;
 pub mod warnings;

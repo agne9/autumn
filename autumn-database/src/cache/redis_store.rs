@@ -59,4 +59,30 @@ impl RedisCacheStore {
 
         Ok(())
     }
+
+    pub async fn increment_with_window(
+        &self,
+        key: &str,
+        window_seconds: u64,
+    ) -> anyhow::Result<u64> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| anyhow::anyhow!("failed to get redis connection: {e}"))?;
+
+        let count = conn
+            .incr::<_, _, u64>(key, 1)
+            .await
+            .map_err(|e| anyhow::anyhow!("redis INCR failed for key `{key}`: {e}"))?;
+
+        if count == 1 {
+            let _ = conn
+                .expire::<_, bool>(key, i64::try_from(window_seconds).unwrap_or(i64::MAX))
+                .await
+                .map_err(|e| anyhow::anyhow!("redis EXPIRE failed for key `{key}`: {e}"))?;
+        }
+
+        Ok(count)
+    }
 }

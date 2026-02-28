@@ -25,6 +25,8 @@ pub struct CacheService {
 
 pub const CONFIG_CACHE_TTL: Duration = Duration::from_secs(15 * 60);
 pub const WORD_LIST_CACHE_TTL: Duration = Duration::from_secs(5 * 60);
+pub const LLM_MENTION_RATE_LIMIT_WINDOW: Duration = Duration::from_secs(10);
+pub const LLM_MENTION_RATE_LIMIT_MAX_HITS: u64 = 2;
 
 impl CacheService {
     pub fn disabled(prefix: impl Into<String>) -> Self {
@@ -119,6 +121,14 @@ impl CacheService {
 
         Ok(loaded)
     }
+
+    pub async fn increment_with_window(&self, key: &str, window: Duration) -> anyhow::Result<u64> {
+        let window_seconds = window.as_secs().max(1);
+        match &self.backend {
+            CacheBackend::Disabled(store) => store.increment_with_window(key, window_seconds).await,
+            CacheBackend::Redis(store) => store.increment_with_window(key, window_seconds).await,
+        }
+    }
 }
 
 pub fn ai_config_key(cache: &CacheService, guild_id: u64) -> String {
@@ -139,6 +149,17 @@ pub fn word_filter_config_key(cache: &CacheService, guild_id: u64) -> String {
 
 pub fn word_filter_words_key(cache: &CacheService, guild_id: u64) -> String {
     cache.key(format!("guild:{guild_id}:config:word_filter_words"))
+}
+
+pub fn llm_mention_rate_limit_key(
+    cache: &CacheService,
+    guild_id: u64,
+    channel_id: u64,
+    user_id: u64,
+) -> String {
+    cache.key(format!(
+        "guild:{guild_id}:channel:{channel_id}:user:{user_id}:ratelimit:llm_mention"
+    ))
 }
 
 pub async fn invalidate_ai_config(cache: &CacheService, guild_id: u64) -> anyhow::Result<()> {

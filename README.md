@@ -50,6 +50,8 @@ Optional Redis cache variables:
 
 If Redis is enabled but unavailable or misconfigured, Autumn automatically falls back to database-only mode.
 
+LLM mention requests are rate-limited per guild/channel/user (`2 requests / 10 seconds`). With Redis enabled, this limit is shared across multiple bot instances; without Redis it still works per process.
+
 *(Optional)* The bot comes with a default system prompt for the LLM integration. If you want to use a custom prompt, simply create a `SYSTEM_PROMPT.md` file in the root directory and write your custom instructions there.
 
 Next, install `sqlx-cli` if you haven't already. You can do so with:

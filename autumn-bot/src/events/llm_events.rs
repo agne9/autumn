@@ -4,6 +4,7 @@ use tracing::error;
 use autumn_core::{Data, Error};
 use autumn_database::impls::ai_config::get_llm_enabled;
 use autumn_database::impls::llm_chat::insert_llm_chat_message;
+use autumn_database::impls::rate_limit::llm_mention_within_limit;
 
 pub async fn handle_message_mention_llm(
     ctx: &serenity::Context,
@@ -55,6 +56,31 @@ pub async fn handle_message_mention_llm(
 
     if prompt.is_empty() {
         new_message.reply(&ctx.http, "a?").await?;
+        return Ok(());
+    }
+
+    let within_limit = match llm_mention_within_limit(
+        &data.db,
+        guild_id.get(),
+        new_message.channel_id.get(),
+        new_message.author.id.get(),
+    )
+    .await
+    {
+        Ok(value) => value,
+        Err(source) => {
+            error!(?source, "failed to evaluate llm rate limit");
+            true
+        }
+    };
+
+    if !within_limit {
+        new_message
+            .reply(
+                &ctx.http,
+                "You're sending LLM requests too quickly. Please wait a few seconds and try again.",
+            )
+            .await?;
         return Ok(());
     }
 
