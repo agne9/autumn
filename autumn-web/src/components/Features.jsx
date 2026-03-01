@@ -1,53 +1,51 @@
 import React, { useEffect, useState, useRef } from 'react';
 import gsap from 'gsap';
 
-// --- Card 1: Diagnostic Shuffler ---
+// --- Card 1: Event Dispatch Feed ---
 const DiagnosticShuffler = () => {
-    const [cards, setCards] = useState([
-        { id: 1, label: "Zero Data Races", status: "Verified" },
-        { id: 2, label: "Memory Integrity", status: "Secured" },
-        { id: 3, label: "Concurrency Model", status: "Active" },
-    ]);
+    const eventPool = [
+        { type: "message_create",     time: "0.2ms" },
+        { type: "interaction_create", time: "0.1ms" },
+        { type: "guild_member_add",   time: "0.3ms" },
+        { type: "message_delete",     time: "0.1ms" },
+        { type: "guild_member_update",time: "0.4ms" },
+        { type: "reaction_add",       time: "0.2ms" },
+        { type: "message_update",     time: "0.1ms" },
+    ];
+
+    const [log, setLog] = useState(() => eventPool.slice(0, 4));
+    const poolRef = useRef(0);
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setCards(prev => {
-                const newCards = [...prev];
-                const last = newCards.pop();
-                newCards.unshift(last);
-                return newCards;
-            });
-        }, 3000);
+            poolRef.current = (poolRef.current + 1) % eventPool.length;
+            const next = eventPool[poolRef.current];
+            setLog(prev => [next, ...prev.slice(0, 3)]);
+        }, 900);
         return () => clearInterval(interval);
     }, []);
 
     return (
-        <div className="relative h-64 w-full flex items-center justify-center overflow-hidden">
-            {cards.map((card, idx) => {
-                const zIndex = 3 - idx;
-                const scale = 1 - (idx * 0.05);
-                const yOffset = idx * 16;
-                const opacity = 1 - (idx * 0.2);
-
-                return (
+        <div className="w-full h-64 flex flex-col font-mono text-xs px-5 pt-5 overflow-hidden">
+            <div className="flex justify-between items-center mb-5 text-[10px]">
+                <span className="text-background/40 uppercase tracking-widest">Event Dispatch</span>
+                <span className="text-[#27c93f] flex items-center gap-1.5">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#27c93f] animate-pulse"></span>
+                    live
+                </span>
+            </div>
+            <div className="flex flex-col gap-2.5 overflow-hidden">
+                {log.map((ev, i) => (
                     <div
-                        key={card.id}
-                        className="absolute w-56 p-4 rounded bg-[#111] border border-[#333] shadow-md transition-all duration-700 font-mono"
-                        style={{
-                            zIndex,
-                            transform: `translateY(${yOffset}px) scale(${scale})`,
-                            opacity,
-                            transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)'
-                        }}
+                        key={`${ev.type}-${i}`}
+                        className="flex justify-between items-center transition-all duration-400"
+                        style={{ opacity: i === 0 ? 1 : i === 1 ? 0.55 : i === 2 ? 0.25 : 0.1 }}
                     >
-                        <div className="flex justify-between items-center mb-4">
-                            <span className="text-[10px] text-background/50">SYS.CHK.{card.id}</span>
-                            <span className="text-[10px] text-[#27c93f] bg-[#27c93f]/10 px-2 py-1 rounded">{card.status}</span>
-                        </div>
-                        <div className="text-xs text-background">{card.label}</div>
+                        <span className="text-background">{ev.type}</span>
+                        <span className="text-[#27c93f]/80 tabular-nums">{ev.time}</span>
                     </div>
-                );
-            })}
+                ))}
+            </div>
         </div>
     );
 };
@@ -169,6 +167,7 @@ const OllamaIntegration = () => {
 const PostgresStorage = () => {
     const [queries, setQueries] = useState([
         "SELECT id, reason FROM mutes WHERE active = true;",
+        "CACHE GET modlog:guild:123456 -> HIT",
         "UPDATE users SET warns = warns + 1 WHERE id = $1;",
         "INSERT INTO audit_log (action, node) VALUES ($1, $2);",
     ]);
@@ -189,7 +188,7 @@ const PostgresStorage = () => {
         <div className="relative h-64 w-full flex flex-col justify-center items-center bg-[#050505] overflow-hidden p-5">
             <div className="absolute top-4 right-4 flex gap-2 items-center bg-[#111] border border-[#333] px-2 py-1 rounded text-[10px] font-mono text-background/60">
                 <svg className="w-3 h-3 text-[#336791]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9c0-.28.22-.5.5-.5h2c.28 0 .5.22.5.5v9c0 .28-.22.5-.5.5h-2c-.28 0-.5-.22-.5-.5z" /></svg>
-                sqlx + postgresql
+                sqlx + postgres + redis
             </div>
             <div className="w-full max-w-[90%] flex flex-col gap-3">
                 {queries.map((q, i) => (
@@ -233,17 +232,17 @@ export default function Features() {
     const features = [
         {
             title: "Memory-Safe Core",
-            desc: "Built in Rust. Fast concurrent operations. No garbage collection pauses. It just runs.",
+            desc: "Written in Rust. Handles concurrent Discord events with no GC pauses and no runtime overhead. Fast and reliable under real server load.",
             comp: <DiagnosticShuffler />
         },
         {
-            title: "Industry Standard Storage",
-            desc: "Powered by strict, typed SQLx interfacing directly with robust PostgreSQL databases.",
+            title: "Postgres + Redis Cache",
+            desc: "SQLx + PostgreSQL as the source of truth. Redis cache layer for fast audit and modlog lookups.",
             comp: <PostgresStorage />
         },
         {
-            title: "Built-in LLM (Ollama)",
-            desc: "Simple setup for local, private AI interaction via Ollama. No tracking tokens required.",
+            title: "Ollama (Optional AI)",
+            desc: "Local, private AI mention replies via Ollama. Your own model, your own hardware. No required tokens.",
             comp: <OllamaIntegration />
         },
         {

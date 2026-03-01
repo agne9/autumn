@@ -12,12 +12,12 @@ export default function DocsLayout({ activePage, headingLevels = 'h1, h2, h3', g
     const { hash } = useLocation();
     const [activeId, setActiveId] = useState('');
     const [tocEntries, setTocEntries] = useState([]);
-    const [mobileNavOpen, setMobileNavOpen] = useState(false);
+    const [mobileNavOpen, setMobileNavOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
     const contentRef = useRef(null);
 
     // After content renders, scan for headings and build TOC
     useEffect(() => {
-        const timer = setTimeout(() => {
+        const frame = requestAnimationFrame(() => {
             if (!contentRef.current) return;
 
             const headings = contentRef.current.querySelectorAll(headingLevels);
@@ -36,9 +36,9 @@ export default function DocsLayout({ activePage, headingLevels = 'h1, h2, h3', g
             });
 
             setTocEntries(entries);
-        }, 150);
+        });
 
-        return () => clearTimeout(timer);
+        return () => cancelAnimationFrame(frame);
     }, [headingLevels]);
 
     // Scroll-spy: observe all heading elements

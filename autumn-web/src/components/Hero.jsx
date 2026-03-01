@@ -32,7 +32,7 @@ export default function Hero() {
         <section ref={containerRef} className="w-full flex flex-col items-center justify-center overflow-x-hidden pt-32 pb-24 px-4 sm:px-6">
 
             <div className="hero-reveal w-full max-w-4xl overflow-x-hidden select-none mb-12 flex justify-center text-accent text-glow-accent">
-                <pre className="max-w-full overflow-hidden font-mono text-[clamp(3px,1vw,14px)] leading-tight tracking-[-0.01em]">
+                <pre className="max-w-full overflow-hidden font-mono text-[clamp(6px,1.8vw,14px)] leading-tight tracking-[-0.01em]">
                     {` █████╗ ██╗   ██╗████████╗██╗   ██╗███╗   ███╗███╗   ██╗
 ██╔══██╗██║   ██║╚══██╔══╝██║   ██║████╗ ████║████╗  ██║
 ███████║██║   ██║   ██║   ██║   ██║██╔████╔██║██╔██╗ ██║
@@ -43,12 +43,16 @@ export default function Hero() {
             </div>
 
             <div className="hero-reveal text-center max-w-2xl mx-auto mb-16">
-                <h1 className="font-sans text-xl md:text-2xl text-background font-medium mb-4">
-                    A general-purpose Discord moderation bot.
+                <h1 className="font-sans text-[clamp(15px,4.5vw,24px)] text-background font-medium mb-4 whitespace-nowrap">
+                    A self-hosted Discord moderation bot.
                 </h1>
-                <p className="font-mono text-background/60 text-sm md:text-base leading-relaxed">
-                    Written in Rust, Serenity, and Poise.<br />
-                    Made for fun, private use, and open source exploration.
+                <p className="font-mono text-background/60 text-sm md:text-base leading-relaxed mb-4">
+                    Warn, timeout, ban, and case notes.<br />
+                    Word filter and auto-escalation.<br /><br />
+                    Built with Rust, Serenity, Poise.
+                </p>
+                <p className="font-mono text-background/40 text-xs md:text-sm leading-relaxed">
+                    Postgres · Redis · Ollama <span className="text-background/25">(optional local AI)</span>
                 </p>
             </div>
 

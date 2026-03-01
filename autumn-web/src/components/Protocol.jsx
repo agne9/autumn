@@ -9,42 +9,65 @@ export default function Protocol() {
     const steps = [
         {
             num: "01",
-            title: "Clone & Compile",
-            desc: "Pull the repo and compile from source using cargo. Zero black-box binaries.",
+            title: "Act in seconds",
+            desc: "Full moderation surface — bans, kicks, timeouts, warns, and bulk purges — from slash commands or prefix. Both supported natively.",
             Animation: () => (
-                <div className="w-full font-mono text-xs md:text-sm text-[#27c93f] flex flex-col gap-2">
-                    <div>❯ cargo build</div>
-                    <div className="text-[#ffbd2e]">   Compiling autumn-utils v0.1.0</div>
-                    <div className="text-[#ffbd2e]">   Compiling autumn-commands v0.1.0</div>
-                    <div className="text-[#ffbd2e]">   Compiling autumn-bot v0.1.0</div>
-                    <div className="text-[#27c93f]">    Finished `dev` profile [unoptimized + debuginfo] target(s)</div>
+                <div className="w-full font-mono text-xs md:text-sm flex flex-col gap-3">
+                    <div className="flex flex-col gap-1">
+                        <div className="text-background/40 text-[10px]"># moderation transcript</div>
+                        <div><span className="text-accent">$</span> <span className="text-background/90">!warn @rebeluser posting invite links</span></div>
+                        <div className="text-background/50 pl-2">↳ <span className="text-[#27c93f]">Warning recorded.</span> Case W14 opened.</div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <div><span className="text-accent">$</span> <span className="text-background/90">!timeout @rebeluser 30m repeated spam</span></div>
+                        <div className="text-background/50 pl-2">↳ <span className="text-[#27c93f]">Timeout applied.</span> Case T8 opened.</div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <div><span className="text-accent">$</span> <span className="text-background/90">!purge 50</span></div>
+                        <div className="text-background/50 pl-2">↳ <span className="text-[#27c93f]">50 messages deleted.</span></div>
+                    </div>
                 </div>
             )
         },
         {
             num: "02",
-            title: "Configure Variables",
-            desc: "Setup your environment variables. Define the keys and basic parameters.",
+            title: "Everything becomes a case",
+            desc: "Every action opens a numbered, auditable case. Add notes, update reasons, and query history across any moderator or target.",
             Animation: () => (
-                <div className="w-full font-mono text-xs md:text-sm text-background/80 flex flex-col gap-2">
-                    <div className="text-[#ff5f56]"># .env</div>
-                    <div>DISCORD_TOKEN="MTR..."</div>
-                    <div>OWNER_ID="123456789"</div>
-                    <div>DATABASE_URL="postgresql://user:pass@localhost/db"</div>
+                <div className="w-full font-mono text-xs md:text-sm flex flex-col gap-3">
+                    <div className="flex flex-col gap-1">
+                        <div className="text-background/40 text-[10px]"># audit log session</div>
+                        <div><span className="text-accent">$</span> <span className="text-background/90">!case W14</span></div>
+                        <div className="text-background/50 pl-2">↳ W14 · warn · @rebeluser · <span className="text-[#ffbd2e]">posting invite links</span></div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <div><span className="text-accent">$</span> <span className="text-background/90">!case W14 note Escalated to admin team</span></div>
+                        <div className="text-background/50 pl-2">↳ <span className="text-[#27c93f]">Note added.</span></div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <div><span className="text-accent">$</span> <span className="text-background/90">!warnings @rebeluser 7</span></div>
+                        <div className="text-background/50 pl-2">↳ 3 warnings in the last 7 days. <span className="text-background/30">// Redis cache hit</span></div>
+                    </div>
                 </div>
             )
         },
         {
             num: "03",
-            title: "Run Binary",
-            desc: "Execute the compiled binary. The bot connects, syncs slash commands, and listens.",
+            title: "Automate the boring parts",
+            desc: "Word filter detects and acts on violations automatically. Warn thresholds trigger escalating timeouts — no manual follow-up needed.",
             Animation: () => (
-                <div className="w-full font-mono text-xs md:text-sm text-background/80 flex flex-col gap-2">
-                    <div className="text-background">Running `target/debug/autumn-bot`</div>
-                    <div className="text-background/60">2026-02-22T15:38:05.357Z <span className="text-[#27c93f]">INFO</span> autumn_bot: PostgreSQL connection established.</div>
-                    <div className="text-background/60">2026-02-22T15:38:05.387Z <span className="text-[#27c93f]">INFO</span> autumn_bot: Autumn is connecting...</div>
-                    <div className="text-background/60">2026-02-22T15:38:06.543Z <span className="text-[#27c93f]">INFO</span> autumn_bot: Autumn has awoken!</div>
-                    <div className="text-[#ffbd2e] animate-pulse">_</div>
+                <div className="w-full font-mono text-xs md:text-sm flex flex-col gap-3">
+                    <div className="flex flex-col gap-1">
+                        <div className="text-background/40 text-[10px]"># server configuration</div>
+                        <div><span className="text-accent">$</span> <span className="text-background/90">!wordfilter enable</span></div>
+                        <div><span className="text-accent">$</span> <span className="text-background/90">!wordfilter action timeout</span></div>
+                        <div className="text-background/50 pl-2">↳ <span className="text-[#27c93f]">Filter active.</span> Violations → 5 min timeout.</div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <div><span className="text-accent">$</span> <span className="text-background/90">!escalation enable</span></div>
+                        <div><span className="text-accent">$</span> <span className="text-background/90">!escalation set warns 3</span></div>
+                        <div className="text-background/50 pl-2">↳ <span className="text-[#27c93f]">Escalation active.</span> 3 warns/24h → auto-timeout.</div>
+                    </div>
                 </div>
             )
         }
