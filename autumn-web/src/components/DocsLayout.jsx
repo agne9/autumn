@@ -12,7 +12,16 @@ export default function DocsLayout({ activePage, headingLevels = 'h1, h2, h3', g
     const { hash } = useLocation();
     const [activeId, setActiveId] = useState('');
     const [tocEntries, setTocEntries] = useState([]);
-    const [mobileNavOpen, setMobileNavOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+    const [mobileNavOpen, setMobileNavOpen] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        const saved = sessionStorage.getItem('docs_mobileNavOpen');
+        return saved !== null ? JSON.parse(saved) : window.innerWidth < 768;
+    });
+
+    const setMobileNavOpenPersist = (val) => {
+        setMobileNavOpen(val);
+        sessionStorage.setItem('docs_mobileNavOpen', JSON.stringify(val));
+    };
     const contentRef = useRef(null);
 
     // After content renders, scan for headings and build TOC
@@ -191,7 +200,7 @@ export default function DocsLayout({ activePage, headingLevels = 'h1, h2, h3', g
                 <div key={group.id} className="flex flex-col gap-1">
                     <a
                         href={`#${group.id}`}
-                        onClick={(event) => { jumpToHeading(event, group.id); setMobileNavOpen(false); }}
+                        onClick={(event) => { jumpToHeading(event, group.id); setMobileNavOpenPersist(false); }}
                         className={`font-mono text-sm font-semibold transition-colors ${
                             activeSectionId === group.id || activeId === group.id
                                 ? 'text-accent'
@@ -206,7 +215,7 @@ export default function DocsLayout({ activePage, headingLevels = 'h1, h2, h3', g
                                 <a
                                     key={child.id}
                                     href={`#${child.id}`}
-                                    onClick={(event) => { jumpToHeading(event, child.id); setMobileNavOpen(false); }}
+                                    onClick={(event) => { jumpToHeading(event, child.id); setMobileNavOpenPersist(false); }}
                                     className={`font-mono text-xs transition-colors ${
                                         activeId === child.id
                                             ? 'text-accent'
@@ -226,7 +235,7 @@ export default function DocsLayout({ activePage, headingLevels = 'h1, h2, h3', g
             <a
                 key={entry.id}
                 href={`#${entry.id}`}
-                onClick={(event) => { jumpToHeading(event, entry.id); setMobileNavOpen(false); }}
+                onClick={(event) => { jumpToHeading(event, entry.id); setMobileNavOpenPersist(false); }}
                 className={`font-mono text-sm transition-colors ${
                     entry.level === 3 ? 'ml-4' : ''
                 } ${
@@ -245,7 +254,7 @@ export default function DocsLayout({ activePage, headingLevels = 'h1, h2, h3', g
             {/* Mobile doc nav toggle */}
             <button
                 className="lg:hidden fixed bottom-6 right-6 z-50 bg-accent text-primary px-4 py-2 rounded-full font-mono text-sm font-semibold shadow-lg"
-                onClick={() => setMobileNavOpen(!mobileNavOpen)}
+                onClick={() => setMobileNavOpenPersist(!mobileNavOpen)}
             >
                 {mobileNavOpen ? 'Close' : 'Navigate'}
             </button>
@@ -258,7 +267,6 @@ export default function DocsLayout({ activePage, headingLevels = 'h1, h2, h3', g
                             <Link
                                 key={link.to}
                                 to={link.to}
-                                onClick={() => setMobileNavOpen(false)}
                                 className={`font-mono text-sm transition-colors ${
                                     activePage === link.label.toLowerCase()
                                         ? 'text-accent font-bold'
@@ -272,10 +280,14 @@ export default function DocsLayout({ activePage, headingLevels = 'h1, h2, h3', g
 
                     <div className="h-px bg-[#1A1A1A] mb-6"></div>
 
-                    <span className="font-mono text-xs text-background/40 uppercase tracking-widest mb-4 block">On this page</span>
-                    <div className="flex flex-col gap-3">
-                        {renderTocMobile()}
-                    </div>
+                    {tocEntries.length > 0 && (
+                        <>
+                            <span className="font-mono text-xs text-background/40 uppercase tracking-widest mb-4 block">On this page</span>
+                            <div className="flex flex-col gap-3">
+                                {renderTocMobile()}
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
 
