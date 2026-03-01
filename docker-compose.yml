@@ -1,0 +1,170 @@
+# docker-compose.yml — Autumn bot stack
+#
+# Compatible with Docker Compose v2+ and rootless Podman Compose.
+# Avoids privileged flags and low-port bindings; uses named volumes throughout.
+#
+# ── Quick start ───────────────────────────────────────────────────────────────
+#
+#   1. Copy .env.example to .env and fill in your values.
+#
+#   2. Create SYSTEM_PROMPT.md (leave empty to use the built-in default,
+#      or write your custom LLM instructions into it):
+#        touch SYSTEM_PROMPT.md
+#
+#   3. Build images and bring up infrastructure:
+#        docker compose build
+#        docker compose up -d postgres redis
+#
+#   4. Run migrations (one-shot; repeat after every bot upgrade):
+#        docker compose run --rm migrator
+#
+#   5. Start the bot:
+#        docker compose up -d autumn-bot
+#
+# ── Updating the bot ──────────────────────────────────────────────────────────
+#
+#   Run the update script — rebuilds, migrates, and restarts in one go:
+#        ./docker/update.sh
+#
+#   Pull the latest code manually first:
+#        git pull
+#
+#   Or manually, step by step:
+#        git pull
+#        docker compose build autumn-bot migrator
+#        docker compose run --rm migrator
+#        docker compose up -d autumn-bot
+#
+# ── Optional LLM (Ollama) ─────────────────────────────────────────────────────
+#
+#   Ollama is gated behind the `llm` profile to avoid pulling the large image
+#   unless you need it.
+#
+#     docker compose --profile llm up -d
+#
+#   Or start just the Ollama service first to pull/load a model:
+#     docker compose --profile llm up -d ollama
+#     docker compose exec ollama ollama pull llama3
+#     docker compose --profile llm up -d  # restart everything including bot
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+
+services:
+
+  # ── Postgres ────────────────────────────────────────────────────────────────
+  postgres:
+    image: docker.io/library/postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: autumn
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # These are forwarded to init-db.sh which creates the two app roles.
+      POSTGRES_MIGRATOR_PASSWORD: ${POSTGRES_MIGRATOR_PASSWORD}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # init-db.sh runs once on first database creation and sets up the two
+      # application roles (autumn_migrator, autumn_app).
+      - ./docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d autumn"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: docker.io/library/redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  # ── Ollama (opt-in: --profile llm) ──────────────────────────────────────────
+  # Two GPU configurations are provided below. Uncomment the one matching your
+  # hardware and leave the other commented out.
+  #
+  # ── AMD (ROCm) ── active by default ─────────────────────────────────────────
+  # Requires: ollama/ollama:rocm image + /dev/kfd + /dev/dri passthrough.
+  # Your user must be in the `render` and `video` groups for rootless Podman:
+  #   sudo usermod -aG render,video $USER  (then re-login)
+  #
+  # ── NVIDIA (CUDA) ── swap in if you have an NVIDIA GPU ──────────────────────
+  # Requires: standard ollama/ollama image + NVIDIA Container Toolkit installed.
+  # Install toolkit: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+  # The `deploy.resources` syntax is the modern Compose v2 way to reserve a GPU;
+  # it does NOT require `privileged` mode.
+  ollama:
+    # AMD (ROCm) — active:
+    image: docker.io/ollama/ollama:rocm
+    # NVIDIA (CUDA) — swap image and replace devices/deploy block below:
+    # image: docker.io/ollama/ollama
+    restart: unless-stopped
+    profiles:
+      - llm
+    volumes:
+      - ollama_data:/root/.ollama
+
+    # ── AMD device passthrough (active) ─────────────────────────────────────
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+
+    # ── NVIDIA GPU reservation (swap in for NVIDIA) ──────────────────────────
+    # Remove the `devices` block above and uncomment this instead:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # ── Migrator (one-shot) ──────────────────────────────────────────────────────
+  # Run this manually before first start and after every schema-changing upgrade:
+  #   docker compose run --rm migrator
+  #   podman compose run --rm migrator
+  migrator:
+    build:
+      context: .
+      target: migrator
+    restart: "no"
+    environment:
+      # Uses the DDL-privileged migration role.
+      DATABASE_URL: postgres://autumn_migrator:${POSTGRES_MIGRATOR_PASSWORD}@postgres:5432/autumn
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Bot ──────────────────────────────────────────────────────────────────────
+  autumn-bot:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    # Loads DISCORD_TOKEN and DISCORD_GUILD_ID from the .env file.
+    env_file: .env
+    volumes:
+      # SYSTEM_PROMPT.md is always mounted read-only. Leave it empty to use
+      # the built-in default prompt; write custom instructions to use your own.
+      # Create with: touch SYSTEM_PROMPT.md
+      - ./SYSTEM_PROMPT.md:/app/SYSTEM_PROMPT.md:ro
+    environment:
+      # Uses the restricted DML-only application role.
+      DATABASE_URL: postgres://autumn_app:${POSTGRES_APP_PASSWORD}@postgres:5432/autumn
+      # Migrations are handled by the migrator service, not the bot.
+      AUTO_RUN_MIGRATIONS: "false"
+      # Redis cache is enabled; the bot falls back gracefully if Redis is down.
+      REDIS_ENABLED: "true"
+      REDIS_URL: redis://redis:6379
+      REDIS_KEY_PREFIX: autumn:prod
+      # Ollama host is set unconditionally; the bot disables LLM automatically
+      # if it can't reach Ollama (i.e. when the `llm` profile is not active).
+      OLLAMA_HOST: http://ollama
+      OLLAMA_PORT: "11434"
+    depends_on:
+      - postgres
+      - redis

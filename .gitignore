@@ -18,8 +18,10 @@
 AGENTS.md
 SYSTEM_PROMPT.md
 
+
 # Local
 /scripts/
+plans/
 
 # web frontend
 node_modules/
