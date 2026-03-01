@@ -6,6 +6,32 @@ import { Github, Menu, X } from 'lucide-react';
 export default function Navbar() {
     const navRef = useRef(null);
     const [isOpen, setIsOpen] = useState(false);
+    const menuRef = useRef(null);
+    const [isMenuVisible, setIsMenuVisible] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setIsMenuVisible(true);
+            if (menuRef.current) {
+                gsap.fromTo(menuRef.current, 
+                    { opacity: 0, y: -10 }, 
+                    { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' }
+                );
+            }
+        } else if (isMenuVisible) {
+            if (menuRef.current) {
+                gsap.to(menuRef.current, {
+                    opacity: 0,
+                    y: -10,
+                    duration: 0.2,
+                    ease: 'power2.in',
+                    onComplete: () => setIsMenuVisible(false)
+                });
+            } else {
+                setIsMenuVisible(false);
+            }
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         const ctx = gsap.context(() => {
@@ -24,10 +50,29 @@ export default function Navbar() {
         return () => ctx.revert();
     }, []);
 
+    useEffect(() => {
+        let initialScrollY = 0;
+
+        const handleScroll = () => {
+            if (isOpen) {
+                if (Math.abs(window.scrollY - initialScrollY) > 50) {
+                    setIsOpen(false);
+                }
+            }
+        };
+
+        if (isOpen) {
+            initialScrollY = window.scrollY;
+            window.addEventListener('scroll', handleScroll, { passive: true });
+        }
+
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [isOpen]);
+
     return (
         <nav
             ref={navRef}
-            className="fixed top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-5xl rounded-lg border border-transparent transition-colors duration-300"
+            className="fixed top-0 md:top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-5xl rounded-none md:rounded-lg border-b border-transparent md:border transition-colors duration-300"
         >
             <div className="flex items-center justify-between px-6 py-4">
                 <Link to="/" className="flex items-center gap-2 group" onClick={() => setIsOpen(false)}>
@@ -67,8 +112,8 @@ export default function Navbar() {
             </div>
 
             {/* Mobile Menu Dropdown */}
-            {isOpen && (
-                <div className="md:hidden absolute top-full left-0 w-full mt-2 bg-primary/95 backdrop-blur-xl border border-dark rounded-lg p-4 flex flex-col gap-4 shadow-xl">
+            {isMenuVisible && (
+                <div ref={menuRef} className="md:hidden absolute top-full left-0 w-full bg-primary/95 backdrop-blur-xl border-b border-dark p-4 flex flex-col gap-4 shadow-xl">
                     <Link to="/#features" onClick={() => setIsOpen(false)} className="font-mono text-sm text-background/80 hover:text-accent p-2">Features</Link>
                     <Link to="/docs" onClick={() => setIsOpen(false)} className="font-mono text-sm text-background/80 hover:text-accent p-2">Docs</Link>
                     <a

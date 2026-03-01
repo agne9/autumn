@@ -255,7 +255,7 @@ export default function Features() {
     return (
         <section id="features" ref={sectionRef} className="py-24 w-full max-w-[96rem] mx-auto px-4 md:px-6 relative z-10">
             <div className="mb-16 flex flex-col items-center text-center">
-                <h2 className="font-mono font-bold text-sm text-accent tracking-widest uppercase mb-2">&gt;_ THE STACK</h2>
+                <h2 className="font-mono font-bold text-lg md:text-base text-accent tracking-widest uppercase mb-2">&gt;_ THE STACK</h2>
                 <h3 className="font-sans text-3xl font-medium text-background">Honest infrastructure.</h3>
             </div>
 

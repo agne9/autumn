@@ -30,7 +30,7 @@ export default function Philosophy() {
             <div ref={contentRef} className="w-full max-w-4xl mx-auto px-6">
 
                 <div className="mb-12 flex flex-col items-center text-center">
-                    <h2 className="font-mono font-bold text-sm text-accent tracking-widest uppercase mb-2">&gt;_ WHY AUTUMN?</h2>
+                    <h2 className="font-mono font-bold text-lg md:text-base text-accent tracking-widest uppercase mb-2">&gt;_ WHY AUTUMN?</h2>
                     <h3 className="font-sans text-2xl md:text-3xl font-medium text-background">Pure Utility. Zero Bloat.</h3>
                 </div>
 
