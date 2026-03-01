@@ -121,9 +121,9 @@ export default function Protocol() {
                         </div>
 
                         {/* Content Panel */}
-                        <div className="flex-1 md:basis-1/2 flex flex-col justify-center p-8 md:p-16 pt-8 md:pt-16 border-b md:border-b-0 md:border-r border-[#333] bg-[#0E0E0E]">
+                        <div className="flex-1 md:basis-1/2 flex flex-col justify-center p-5 md:p-16 border-b md:border-b-0 md:border-r border-[#333] bg-[#0E0E0E]">
                             <span className="font-mono text-sm text-accent mb-4 font-bold">[{step.num}]</span>
-                            <h3 className="font-sans font-medium text-2xl md:text-3xl text-background mb-4">
+                            <h3 className="font-sans font-medium text-xl md:text-3xl text-background mb-3">
                                 {step.title}
                             </h3>
                             <p className="font-mono text-sm text-background/60 leading-relaxed">
@@ -140,7 +140,7 @@ export default function Protocol() {
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
                                 <span className="font-mono text-[10px] text-background/40 ml-2">step_0{index + 1}.sh</span>
                             </div>
-                            <div className="p-8 flex-1 flex items-center">
+                            <div className="p-5 md:p-8 flex-1 flex items-center">
                                 <step.Animation />
                             </div>
                         </div>
